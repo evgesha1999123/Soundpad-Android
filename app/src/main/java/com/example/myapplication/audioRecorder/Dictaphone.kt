@@ -3,13 +3,16 @@ package com.example.myapplication.audioRecorder
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.AudioFormat
+import android.util.Log
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
 
-class AudioRecorder {
+class Dictaphone(_recordsDir: File) {
+    private val recordsDir = _recordsDir
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
+    private var isPaused = false
     private var recordingJob: Job? = null
 
     // Audio configuration
@@ -18,19 +21,25 @@ class AudioRecorder {
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
 
+    private fun ensureDirCreated(): File? {
+        Log.d("AppPath", "Путь ${recordsDir.absolutePath} существует -> ${recordsDir.exists()}")
+        if (!recordsDir.exists()) {
+            val created = recordsDir.mkdir()
+            Log.d("AppPath", "Папка создана: $created, путь: ${recordsDir.absolutePath}")
+        }
+        return if (recordsDir.exists()) recordsDir else null
+    }
+
     fun startRecording(
-        audioDir: File,
         fileName: String = System.currentTimeMillis().toString()
     ): String? {
         if (isRecording) return null
 
         try {
             // Создаем директорию если не существует
-            if (!audioDir.exists()) {
-                audioDir.mkdirs()
-            }
+            val recordDir: File? = ensureDirCreated()
 
-            val outputFile = File(audioDir, "$fileName.pcm")
+            val outputFile = File(recordDir, "$fileName.pcm")
 
             audioRecord = AudioRecord(
                 MediaRecorder.AudioSource.MIC,  // Источник - микрофон
@@ -39,7 +48,6 @@ class AudioRecorder {
                 audioFormat,    // Качество
                 bufferSize   // Размер буфера
             )
-
             audioRecord?.startRecording()
             isRecording = true
 
@@ -60,8 +68,6 @@ class AudioRecorder {
     }
 
     fun stopRecording() {
-        if (!isRecording) return
-
         isRecording = false
         recordingJob?.cancel()
 
@@ -70,6 +76,7 @@ class AudioRecorder {
             release()
         }
         audioRecord = null
+        println("--->> КОНЕЦ записи")
     }
 
     private fun recordAudioToFile(outputFile: File) {
@@ -80,11 +87,13 @@ class AudioRecorder {
             outputStream = FileOutputStream(outputFile)
 
             while (isRecording) {
-                val bytesRead = audioRecord?.read(buffer, 0, bufferSize) ?: 0
-                if (bytesRead > 0) {
-                    outputStream.write(buffer, 0, bytesRead)
+                if (!isPaused) {
+                    val bytesRead = audioRecord?.read(buffer, 0, bufferSize) ?: 0
+                    if (bytesRead > 0) {
+                        println("$isRecording -->> НАЧАЛО записи")
+                        outputStream.write(buffer, 0, bytesRead)
+                    }
                 }
-
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -93,5 +102,24 @@ class AudioRecorder {
         }
     }
 
-    fun isRecording(): Boolean = isRecording
+    fun isRecording(): Boolean {
+        return isRecording
+    }
+
+    fun isPaused(): Boolean {
+        return isPaused
+    }
+
+    public fun pauseRecording(){
+        if (!isRecording || isPaused) return
+        isPaused = true
+        println("--->> ПАУЗА записи")
+    }
+
+    public fun resumeRecording(){
+        if (!isRecording || !isPaused) return
+        isPaused = false
+        println("--->> ВОЗОБНОВЛЕНИЕ записи")
+    }
+
 }

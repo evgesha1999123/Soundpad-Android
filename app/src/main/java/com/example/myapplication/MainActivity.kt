@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import com.example.myapplication.audioRecorder.Dictaphone
+import com.example.myapplication.fileRepo.FileRepo
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -33,6 +34,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val dictaphone = Dictaphone(File(filesDir.absolutePath, "records"))
+        val fileRepo = FileRepo(dictaphone.getRecordsDir())
+        println("Список файлов >>>>>>>>>> ${fileRepo.getListOfFiles()}")
         setContent {
             MaterialTheme {
                 Surface(
@@ -72,6 +75,9 @@ class MainActivity : ComponentActivity() {
                     } else {
                         recording = false
                         dictaphone.stopRecording()
+                        if (!dictaphone.isRecording()) {
+
+                        }
                     }
                 },
                 modifier = Modifier

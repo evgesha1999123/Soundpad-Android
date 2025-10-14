@@ -7,7 +7,7 @@ import android.util.Log
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
-
+//TODO: Вынести создание папки в репозиторий
 class Dictaphone(_recordsDir: File) {
     private val recordsDir = _recordsDir
     private var audioRecord: AudioRecord? = null
@@ -102,14 +102,6 @@ class Dictaphone(_recordsDir: File) {
         }
     }
 
-    fun isRecording(): Boolean {
-        return isRecording
-    }
-
-    fun isPaused(): Boolean {
-        return isPaused
-    }
-
     public fun pauseRecording(){
         if (!isRecording || isPaused) return
         isPaused = true
@@ -120,6 +112,22 @@ class Dictaphone(_recordsDir: File) {
         if (!isRecording || !isPaused) return
         isPaused = false
         println("--->> ВОЗОБНОВЛЕНИЕ записи")
+    }
+
+    fun isRecording(): Boolean {
+        return isRecording
+    }
+
+    fun isPaused(): Boolean {
+        return isPaused
+    }
+
+    fun getRecordsDir(): File{
+        return recordsDir
+    }
+
+    fun setRecordsDir(){
+
     }
 
 }

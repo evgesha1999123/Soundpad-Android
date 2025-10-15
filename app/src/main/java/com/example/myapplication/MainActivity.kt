@@ -25,17 +25,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
-import com.example.myapplication.audioRecorder.Dictaphone
+import com.example.myapplication.Recorder.Dictaphone
 import com.example.myapplication.fileRepo.FileRepo
+import com.example.myapplication.models.AudioConfigModel
 import java.io.File
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dictaphone = Dictaphone(File(filesDir.absolutePath, "records"))
-        val fileRepo = FileRepo(dictaphone.getRecordsDir())
-        println("Список файлов >>>>>>>>>> ${fileRepo.getListOfFiles()}")
+        var audioConfig: AudioConfigModel = AudioConfigModel()
+        val dictaphone = Dictaphone(audioConfig)
+        val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
+        println("Список файлов >>>>>>>>>> ${fileRepo.listFiles()}")
         setContent {
             MaterialTheme {
                 Surface(
@@ -50,7 +52,7 @@ class MainActivity : ComponentActivity() {
                         ),
                         200
                     )
-                    MicrophoneControls(dictaphone)
+                    MicrophoneControls(dictaphone, fileRepo)
                 }
             }
         }
@@ -58,7 +60,7 @@ class MainActivity : ComponentActivity() {
 
 
     @Composable
-    fun MicrophoneControls(dictaphone: Dictaphone) {
+    fun MicrophoneControls(dictaphone: Dictaphone, fileRepo: FileRepo) {
         var recording by remember { mutableStateOf(false) }
 
         Box(
@@ -70,8 +72,8 @@ class MainActivity : ComponentActivity() {
                 onClick = {
                     if (!recording) {
                         recording = true
-                        val outFile = dictaphone.startRecording()
-                        Log.d("Создание файла -> ", outFile.toString())
+                        val outFile = dictaphone.startRecording(recordDir=fileRepo.getCurrentDirectory())
+                        Log.d("MainActivity", "Getting file: out <<- ${ outFile.toString() }")
                     } else {
                         recording = false
                         dictaphone.stopRecording()

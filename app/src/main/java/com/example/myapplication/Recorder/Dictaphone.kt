@@ -1,52 +1,40 @@
-package com.example.myapplication.audioRecorder
+package com.example.myapplication.Recorder
 
 import android.media.AudioRecord
-import android.media.MediaRecorder
-import android.media.AudioFormat
 import android.util.Log
-import kotlinx.coroutines.*
+import com.example.myapplication.models.AudioConfigModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+
 //TODO: Вынести создание папки в репозиторий
-class Dictaphone(_recordsDir: File) {
-    private val recordsDir = _recordsDir
+class Dictaphone(_audioConfig: AudioConfigModel) {
+    var audioConfig = _audioConfig
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
     private var isPaused = false
     private var recordingJob: Job? = null
 
-    // Audio configuration
-    private val sampleRate = 44100
-    private val channelConfig = AudioFormat.CHANNEL_IN_MONO
-    private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
-    private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-
-    private fun ensureDirCreated(): File? {
-        Log.d("AppPath", "Путь ${recordsDir.absolutePath} существует -> ${recordsDir.exists()}")
-        if (!recordsDir.exists()) {
-            val created = recordsDir.mkdir()
-            Log.d("AppPath", "Папка создана: $created, путь: ${recordsDir.absolutePath}")
-        }
-        return if (recordsDir.exists()) recordsDir else null
-    }
 
     fun startRecording(
-        fileName: String = System.currentTimeMillis().toString()
+        fileName: String = System.currentTimeMillis().toString(),
+        recordDir: File
     ): String? {
         if (isRecording) return null
 
         try {
             // Создаем директорию если не существует
-            val recordDir: File? = ensureDirCreated()
 
             val outputFile = File(recordDir, "$fileName.pcm")
-
             audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.MIC,  // Источник - микрофон
-                sampleRate, // Частота
-                channelConfig,  // Моно/стерео
-                audioFormat,    // Качество
-                bufferSize   // Размер буфера
+                audioConfig.microphoneAudioSource,
+                audioConfig.sampleRate,
+                audioConfig.channelConfig,
+                audioConfig.audioFormat,
+                audioConfig.bufferedSize
             )
             audioRecord?.startRecording()
             isRecording = true
@@ -76,11 +64,11 @@ class Dictaphone(_recordsDir: File) {
             release()
         }
         audioRecord = null
-        println("--->> КОНЕЦ записи")
+        Log.d("Dictaphone", "Stopped!")
     }
 
     private fun recordAudioToFile(outputFile: File) {
-        val buffer = ByteArray(bufferSize)
+        val buffer = ByteArray(audioConfig.bufferedSize)
         var outputStream: FileOutputStream? = null
 
         try {
@@ -88,9 +76,9 @@ class Dictaphone(_recordsDir: File) {
 
             while (isRecording) {
                 if (!isPaused) {
-                    val bytesRead = audioRecord?.read(buffer, 0, bufferSize) ?: 0
+                    val bytesRead = audioRecord?.read(buffer, 0, audioConfig.bufferedSize) ?: 0
                     if (bytesRead > 0) {
-                        println("$isRecording -->> НАЧАЛО записи")
+                        Log.d("Dictaphone", "Recording to file -> $outputFile")
                         outputStream.write(buffer, 0, bytesRead)
                     }
                 }
@@ -105,13 +93,13 @@ class Dictaphone(_recordsDir: File) {
     public fun pauseRecording(){
         if (!isRecording || isPaused) return
         isPaused = true
-        println("--->> ПАУЗА записи")
+        Log.d("Dictaphone", "Paused...")
     }
 
     public fun resumeRecording(){
         if (!isRecording || !isPaused) return
         isPaused = false
-        println("--->> ВОЗОБНОВЛЕНИЕ записи")
+        Log.d("Dictaphone", "Resuming")
     }
 
     fun isRecording(): Boolean {
@@ -120,14 +108,6 @@ class Dictaphone(_recordsDir: File) {
 
     fun isPaused(): Boolean {
         return isPaused
-    }
-
-    fun getRecordsDir(): File{
-        return recordsDir
-    }
-
-    fun setRecordsDir(){
-
     }
 
 }

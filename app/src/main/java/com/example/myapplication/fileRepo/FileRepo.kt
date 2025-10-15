@@ -3,42 +3,40 @@ package com.example.myapplication.fileRepo
 import android.util.Log
 import java.io.File
 
+// TODO: Продумать возможность создания кастомных папок (например, для скачиваемых сэмплов)
 class FileRepo(_directory: File) {
-    private var directory: File = _directory
-    private var files: MutableList<File> = directory.listFiles()?.toMutableList() ?: mutableListOf()
+    private var directory = _directory
+    init {
+        ensureDirCreated()
+    }
 
-    private fun ensureDirCreated(): File? {
-        Log.d("AppPath", "Путь $directory существует -> ${directory.exists()}")
+    private fun ensureDirCreated() {
         if (!directory.exists()) {
-            val created = directory.mkdir()
-            Log.d("AppPath", "Папка создана: $created, путь: ${directory.absolutePath}")
+            directory.mkdirs()
         }
-        return if (directory.exists()) directory else null
     }
 
-    fun getDirectory(): File{
-        return directory
+    fun getCurrentDirectory(): File = directory
+
+    fun setDirectory(newDirectory: File) {
+        directory = newDirectory
+        ensureDirCreated()
     }
 
-    fun setDirectory(directory: File){
-        this.directory = directory
-    }
+    fun listFiles(): List<File> =
+        directory.listFiles()?.toList() ?: emptyList()
 
-    fun getListOfFiles(): MutableList<File> {
-        return files
-    }
+    fun getFile(index: Int): File =
+        listFiles()[index]
 
-    fun getFile(index: Int): File{
-        return files[index]
-    }
+    fun addFile(file: File): Boolean =
+        file.createNewFile()
 
-    fun addFile(file: File): Int{
-        /* Returns index of the last element */
-        files.add(file)
-        return files.size - 1
-    }
+    fun deleteFile(file: File): Boolean =
+        file.delete()
 
-    fun deleteFile(){
-
-    }
+    fun purgeDirectory(): Boolean =
+        if (directory.exists()) {
+            directory.deleteRecursively()
+        } else false
 }

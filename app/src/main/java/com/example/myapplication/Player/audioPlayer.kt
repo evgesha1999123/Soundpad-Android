@@ -7,7 +7,7 @@ import android.media.AudioTrack
 import com.example.myapplication.models.AudioConfigModel
 import android.media.MediaPlayer
 
-class audioPlayer(_audioConfig: AudioConfigModel) {
+class AudioPlayer(_audioConfig: AudioConfigModel) {
     var audioConfig = _audioConfig
 
 //    val player = AudioTrack.Builder().setAudioAttributes(

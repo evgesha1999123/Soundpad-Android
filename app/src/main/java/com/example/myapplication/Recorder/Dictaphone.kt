@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
-//TODO: Вынести создание папки в репозиторий
 class Dictaphone(_audioConfig: AudioConfigModel) {
     var audioConfig = _audioConfig
     private var audioRecord: AudioRecord? = null
@@ -26,8 +25,6 @@ class Dictaphone(_audioConfig: AudioConfigModel) {
         if (isRecording) return null
 
         try {
-            // Создаем директорию если не существует
-
             val outputFile = File(recordDir, "$fileName.pcm")
             audioRecord = AudioRecord(
                 audioConfig.microphoneAudioSource,

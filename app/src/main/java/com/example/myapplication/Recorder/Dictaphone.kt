@@ -6,6 +6,7 @@ import com.example.myapplication.models.AudioConfigModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
@@ -15,6 +16,7 @@ class Dictaphone(_audioConfig: AudioConfigModel) {
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
     private var isPaused = false
+    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var recordingJob: Job? = null
 
 
@@ -83,6 +85,7 @@ class Dictaphone(_audioConfig: AudioConfigModel) {
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
+            outputStream?.flush()
             outputStream?.close()
         }
     }

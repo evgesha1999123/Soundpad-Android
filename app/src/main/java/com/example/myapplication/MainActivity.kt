@@ -22,6 +22,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,25 +63,34 @@ class MainActivity : ComponentActivity() {
                         ),
                         200
                     )
-                    var refreshTrigger by remember { mutableStateOf(0) }
+                    var refreshTrigger by remember { mutableIntStateOf(0) }
+                    var deleteFilesTrigger by remember { mutableIntStateOf(0) }
 
-                    AudioButton(
+                    PlayButtons(
                         AudioPlayer(_audioConfig = audioConfig),
-                        refreshTrigger = refreshTrigger,
+                        appendFileTrigger = refreshTrigger,
+                        deleteFilesTrigger = deleteFilesTrigger,
                         fileRepo = fileRepo
                     )
                     MicrophoneControls(dictaphone, fileRepo, { refreshTrigger++ })
+                    FileControls(fileRepo, { deleteFilesTrigger++ })
                 }
             }
         }
     }
 
     @Composable
-    fun AudioButton(audioPlayer: AudioPlayer, fileRepo: FileRepo, refreshTrigger: Int) {
-        var files by remember { mutableStateOf(fileRepo.listFiles()) }
+    fun PlayButtons(
+        audioPlayer: AudioPlayer,
+        fileRepo: FileRepo,
+        appendFileTrigger: Int,
+        deleteFilesTrigger: Int
+    ) {
+        var files = remember { mutableStateListOf<File>() }
 
-        LaunchedEffect(refreshTrigger) {
-            files = fileRepo.listFiles()
+        LaunchedEffect(appendFileTrigger, deleteFilesTrigger) {
+            files.clear()
+            files.addAll(fileRepo.listFiles())
         }
 
         Box(
@@ -150,6 +161,28 @@ class MainActivity : ComponentActivity() {
             ) {
                 Text(if (recording) "✋" else "\uD83D\uDD34", fontSize = 35.sp)
             }
+        }
+    }
+
+    @Composable
+    fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit){
+        Box(
+            modifier = Modifier
+                .padding(20.dp)
+                .size(75.dp)
+        ){
+            Button(
+                onClick = {
+                    fileRepo.purgeDirectory()
+                    onPurgeFiles()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp)
+                    .size(100.dp)
+                    .aspectRatio(1f),
+                shape = RoundedCornerShape(8.dp)
+            ) { Text("\uD83D\uDDD1\uFE0F", fontSize = 35.sp) }
         }
     }
 }

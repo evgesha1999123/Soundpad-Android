@@ -1,117 +1,50 @@
 package com.example.myapplication.Player
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.MediaPlayer
 import android.util.Log
+import androidx.core.net.toUri
 import com.example.myapplication.models.AudioConfigModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
-class AudioPlayer(_audioConfig: AudioConfigModel) {
-    var audioConfig: AudioConfigModel = _audioConfig
-    private var audioTrack: AudioTrack? = null
-    private var isPlaying = false
+class AudioPlayer(private val context: Context) {
+    private var player: MediaPlayer? = null
+    var playing = false
+        private set
 
-    private fun readFileBytes(filePath: String): ByteArray?{
-        return try {
-            File(filePath).readBytes()
-        } catch (error: Exception) {
-            error.printStackTrace()
-            null
-        }
-    }
-    fun playPcm(filePath: String){
-        val bufferSize = audioConfig.bufferedSize
-        val pcmData = readFileBytes(filePath)
-        val pcmInput = pcmData?.inputStream()?.buffered()
+    fun playFile(file: File) {
+        stop() // Сначала останавливаем и освобождаем старый плеер
 
-        val player = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .build()
-        )
-            .setAudioFormat(
-            AudioFormat.Builder()
-                .setEncoding(audioConfig.audioFormat)
-                .setSampleRate(audioConfig.sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build()
-        )
-            .setBufferSizeInBytes(audioConfig.bufferedSize)
-            .build()
-
-        try{
-            Log.d(this::class.simpleName, "Start playing: $filePath")
-            player.play()
-            val buffer = ByteArray(bufferSize)
-            var bytesRead: Int
-            while (pcmInput?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
-                Log.d(this::class.simpleName, "Now playing: $filePath")
-                player.write(buffer, 0, bytesRead)
+        player = MediaPlayer.create(context, file.toUri()).apply {
+            Log.d(this::class.simpleName, "Start playing audiofile: $file")
+            playing = true
+            setOnCompletionListener {
+                stop() // Автоочистка по завершении
             }
-            player.stop()
-
-        } catch (error: Exception){
-            Log.e(this::class.simpleName, "Playback error: $error")
-        } finally {
-            player.release()
-            pcmInput?.close()
-            Log.d(this::class.simpleName, "Playback finished!")
-        }
-    }
-
-    fun playPcmStream() {
-        stop()
-
-        val bufferSize = AudioTrack.getMinBufferSize(
-            audioConfig.sampleRate,
-            audioConfig.channelConfig,
-            audioConfig.audioFormat
-        )
-
-        audioTrack = AudioTrack(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build(),
-            AudioFormat.Builder()
-                .setEncoding(audioConfig.audioFormat)
-                .setSampleRate(audioConfig.sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build(),
-            bufferSize,
-            AudioTrack.MODE_STREAM,
-            AudioManager.AUDIO_SESSION_ID_GENERATE
-        )
-
-        audioTrack?.play()
-        isPlaying = true
-    }
-
-    fun writeToStream(filePath: String) {
-        val data = readFileBytes(filePath)
-        if (data != null){
-            if (isPlaying) {
-                audioTrack?.write(data, 0, data.size)
-            }
+            start()
         }
     }
 
     fun stop() {
-        isPlaying = false
-        audioTrack?.apply {
-            stop()
+        player?.apply {
+            try {
+                if (isPlaying) stop()
+            } catch (e: IllegalStateException) {
+                Log.w("AudioPlayer", "Stop called in invalid state")
+            }
             release()
         }
-        audioTrack = null
+        player = null
+        playing = false
+        Log.d("AudioPlayer", "Stopped playing")
     }
 
-    fun release() {
-        stop()
-    }
+    fun isPlaying(): Boolean = playing
 }

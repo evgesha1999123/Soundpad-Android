@@ -1,113 +1,50 @@
 package com.example.myapplication.Recorder
 
-import android.media.AudioRecord
+import android.content.Context
+import android.media.MediaRecorder
+import android.os.Build
 import android.util.Log
 import com.example.myapplication.models.AudioConfigModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
-class Dictaphone(_audioConfig: AudioConfigModel) {
-    var audioConfig = _audioConfig
-    private var audioRecord: AudioRecord? = null
-    private var isRecording = false
-    private var isPaused = false
-    val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var recordingJob: Job? = null
 
-
-    fun startRecording(
-        fileName: String = System.currentTimeMillis().toString(),
-        recordDir: File
-    ): String? {
-        if (isRecording) return null
-
-        try {
-            val outputFile = File(recordDir, "$fileName.pcm")
-            audioRecord = AudioRecord(
-                audioConfig.microphoneAudioSource,
-                audioConfig.sampleRate,
-                audioConfig.channelConfig,
-                audioConfig.audioFormat,
-                audioConfig.bufferedSize
-            )
-            audioRecord?.startRecording()
-            isRecording = true
-
-            // Запускаем запись в отдельном потоке
-            recordingJob = coroutineScope.launch {
-                recordAudioToFile(outputFile)
-            }
-
-            return outputFile.absolutePath
-
-        } catch (e: SecurityException) {
-            e.printStackTrace()
-            return null
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return null
+class Dictaphone(private val context: Context) {
+    private var recorder: MediaRecorder? = null
+    var recording = false
+    private fun createRecorder(): MediaRecorder {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S){
+            MediaRecorder(context)
+        }
+        else{
+            MediaRecorder()
         }
     }
 
-    fun stopRecording() {
-        isRecording = false
-        recordingJob?.cancel()
+    fun startRecording(outputFile: File){
+        createRecorder().apply{
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setOutputFile(FileOutputStream(outputFile).fd)
 
-        audioRecord?.apply {
-            stop()
-            release()
-        }
-        audioRecord = null
-        Log.d("Dictaphone", "Stopped!")
-    }
-
-    private fun recordAudioToFile(outputFile: File) {
-        val buffer = ByteArray(audioConfig.bufferedSize)
-        var outputStream: FileOutputStream? = null
-
-        try {
-            outputStream = FileOutputStream(outputFile)
-
-            while (isRecording) {
-                if (!isPaused) {
-                    val bytesRead = audioRecord?.read(buffer, 0, audioConfig.bufferedSize) ?: 0
-                    if (bytesRead > 0) {
-                        Log.d("Dictaphone", "Recording to file -> $outputFile")
-                        outputStream.write(buffer, 0, bytesRead)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            outputStream?.flush()
-            outputStream?.close()
+            prepare()
+            Log.d(this::class.simpleName, "Start recording: $outputFile")
+            start()
+            recording = true
+            recorder = this
         }
     }
 
-    public fun pauseRecording(){
-        if (!isRecording || isPaused) return
-        isPaused = true
-        Log.d("Dictaphone", "Paused...")
-    }
+    fun stopRecording(){
+        Log.d(this::class.simpleName, "Recording stop")
+        recorder?.stop()
+        recorder?.reset()
+        recording = false
 
-    public fun resumeRecording(){
-        if (!isRecording || !isPaused) return
-        isPaused = false
-        Log.d("Dictaphone", "Resuming")
     }
 
     fun isRecording(): Boolean {
-        return isRecording
+        return recording
     }
-
-    fun isPaused(): Boolean {
-        return isPaused
-    }
-
 }

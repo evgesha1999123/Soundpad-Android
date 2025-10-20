@@ -47,9 +47,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         var audioConfig: AudioConfigModel = AudioConfigModel()
-        val dictaphone = Dictaphone(audioConfig)
+        val dictaphone = Dictaphone(this)
         val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
-        println("Список файлов >>>>>>>>>> ${fileRepo.listFiles()}")
         setContent {
             MaterialTheme {
                 Surface(
@@ -68,7 +67,7 @@ class MainActivity : ComponentActivity() {
                     var deleteFilesTrigger by remember { mutableIntStateOf(0) }
 
                     PlayButtons(
-                        AudioPlayer(_audioConfig = audioConfig),
+                        AudioPlayer(this),
                         appendFileTrigger = refreshTrigger,
                         deleteFilesTrigger = deleteFilesTrigger,
                         fileRepo = fileRepo
@@ -111,7 +110,7 @@ class MainActivity : ComponentActivity() {
                     Button(
                         onClick = {
                             coroutineScope.launch {
-                                audioPlayer.playPcm(fileRepo.getFile(index).toString())
+                                audioPlayer.playFile(File(fileRepo.getFile(index).toString()))
                             }
                         },
                         modifier = Modifier
@@ -143,9 +142,7 @@ class MainActivity : ComponentActivity() {
                 onClick = {
                     if (!recording) {
                         recording = true
-                        val outFile =
-                            dictaphone.startRecording(recordDir = fileRepo.getCurrentDirectory())
-                        Log.d("MainActivity", "Getting file: out <<- ${outFile.toString()}")
+                        dictaphone.startRecording(File(fileRepo.getCurrentDirectory().toString(), "${System.currentTimeMillis()}.mp4"))
                     } else {
                         recording = false
                         dictaphone.stopRecording()

@@ -4,7 +4,11 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.util.Log
 import com.example.myapplication.models.AudioConfigModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 class AudioPlayer(_audioConfig: AudioConfigModel) {
@@ -21,24 +25,43 @@ class AudioPlayer(_audioConfig: AudioConfigModel) {
         }
     }
     fun playPcm(filePath: String){
+        val bufferSize = audioConfig.bufferedSize
         val pcmData = readFileBytes(filePath)
-        val player = AudioTrack.Builder().setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .build()
-        ).setAudioFormat(
+        val pcmInput = pcmData?.inputStream()?.buffered()
+
+        val player = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .build()
+        )
+            .setAudioFormat(
             AudioFormat.Builder()
                 .setEncoding(audioConfig.audioFormat)
                 .setSampleRate(audioConfig.sampleRate)
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .build()
-        ).setBufferSizeInBytes(audioConfig.bufferedSize).build()
+        )
+            .setBufferSizeInBytes(audioConfig.bufferedSize)
+            .build()
 
-        player.apply{
-            play()
-            if (pcmData != null){
-                write(pcmData, 0, pcmData.size)
+        try{
+            Log.d(this::class.simpleName, "Start playing: $filePath")
+            player.play()
+            val buffer = ByteArray(bufferSize)
+            var bytesRead: Int
+            while (pcmInput?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
+                Log.d(this::class.simpleName, "Now playing: $filePath")
+                player.write(buffer, 0, bytesRead)
             }
+            player.stop()
+
+        } catch (error: Exception){
+            Log.e(this::class.simpleName, "Playback error: $error")
+        } finally {
+            player.release()
+            pcmInput?.close()
+            Log.d(this::class.simpleName, "Playback finished!")
         }
     }
 

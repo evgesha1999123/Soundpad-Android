@@ -38,6 +38,7 @@ import com.example.myapplication.fileRepo.FileRepo
 import com.example.myapplication.models.AudioConfigModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -87,6 +88,7 @@ class MainActivity : ComponentActivity() {
         deleteFilesTrigger: Int
     ) {
         var files = remember { mutableStateListOf<File>() }
+        val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
         LaunchedEffect(appendFileTrigger, deleteFilesTrigger) {
             files.clear()
@@ -108,7 +110,7 @@ class MainActivity : ComponentActivity() {
                     val file = files[index]
                     Button(
                         onClick = {
-                            CoroutineScope(Dispatchers.IO).launch {
+                            coroutineScope.launch {
                                 audioPlayer.playPcm(fileRepo.getFile(index).toString())
                             }
                         },

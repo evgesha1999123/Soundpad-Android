@@ -16,7 +16,7 @@ class Dictaphone(_audioConfig: AudioConfigModel) {
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
     private var isPaused = false
-    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var recordingJob: Job? = null
 
 
@@ -39,7 +39,7 @@ class Dictaphone(_audioConfig: AudioConfigModel) {
             isRecording = true
 
             // Запускаем запись в отдельном потоке
-            recordingJob = CoroutineScope(Dispatchers.IO).launch {
+            recordingJob = coroutineScope.launch {
                 recordAudioToFile(outputFile)
             }
 

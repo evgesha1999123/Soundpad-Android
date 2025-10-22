@@ -2,6 +2,7 @@ package com.example.audiorecorder
 
 import android.Manifest
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -42,20 +44,25 @@ import androidx.core.app.ActivityCompat
 import com.example.myapplication.Player.AudioPlayer
 import com.example.myapplication.Recorder.Dictaphone
 import com.example.myapplication.fileRepo.FileRepo
-import com.example.myapplication.models.AudioConfigModel
+//import com.example.myapplication.models.AudioConfigModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.collectAsState
 import java.io.File
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        var audioConfig: AudioConfigModel = AudioConfigModel()
+//        var audioConfig: AudioConfigModel = AudioConfigModel()
         val dictaphone = Dictaphone(this)
         val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
+        val audioPlayer = AudioPlayer(context = this)
         setContent {
             MaterialTheme {
                 Surface(
@@ -75,7 +82,7 @@ class MainActivity : ComponentActivity() {
                     var deleting by remember { mutableStateOf(false) }
 
                     PlayButtons(
-                        AudioPlayer(this),
+                        audioPlayer,
                         appendFileTrigger = refreshTrigger,
                         deleteFilesTrigger = deleteFilesTrigger,
                         deleteSingleFile = deleting,
@@ -83,6 +90,7 @@ class MainActivity : ComponentActivity() {
                     )
                     MicrophoneControls(dictaphone, fileRepo, { refreshTrigger++ })
                     FileControls(fileRepo, { deleteFilesTrigger++ }, onDeletingChange = { newValue -> deleting = newValue })
+                    StopPlayAudioControl(audioPlayer)
                 }
             }
         }
@@ -117,6 +125,8 @@ class MainActivity : ComponentActivity() {
         val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         var deletedIndex = remember { mutableIntStateOf(-1) }
         var deletedFile = remember { mutableStateOf(File("")) }
+        var playing = audioPlayer.playing.collectAsState()
+        var currentPlayingIndex by remember { mutableStateOf<Int?>(null) }
 
         LaunchedEffect(appendFileTrigger, deleteFilesTrigger) {
             files.clear()
@@ -153,6 +163,7 @@ class MainActivity : ComponentActivity() {
                         onClick = {
                             if (!deleteSingleFile){
                                 coroutineScope.launch {
+                                    currentPlayingIndex = index
                                     audioPlayer.playFile(File(fileRepo.getFile(index).toString()))
                                 }
                             }
@@ -166,10 +177,16 @@ class MainActivity : ComponentActivity() {
                             .aspectRatio(1f),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            if (deleteSingleFile) Color.Red else Color.Unspecified
+                            if (deleteSingleFile) {
+                                Color.Red
+                            } else if (currentPlayingIndex == index && playing.value) {
+                                Color.Green
+                            } else {
+                                Color.Unspecified
+                            }
                         )
                     ) {
-                        Text("PLAY $index")
+                        Text("")
                     }
                 }
             }
@@ -277,6 +294,36 @@ class MainActivity : ComponentActivity() {
                         Text("\uD83D\uDDD1\uFE0F", fontSize = 20.sp)
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    fun StopPlayAudioControl(audioPlayer: AudioPlayer){
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 29.dp)
+                .offset(x = (-25).dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Button(
+                onClick = {
+                    if (audioPlayer.playing.value) {
+                        audioPlayer.stop()
+                    }
+                },
+                modifier = Modifier
+                    .size(100.dp)
+                    .aspectRatio(1f),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Stop,
+                    contentDescription = "Стоп",
+                    modifier = Modifier.size(48.dp)
+                )
             }
         }
     }

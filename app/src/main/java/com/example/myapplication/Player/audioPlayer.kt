@@ -1,50 +1,57 @@
 package com.example.myapplication.Player
 
 import android.content.Context
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioManager
-import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.util.Log
 import androidx.core.net.toUri
-import com.example.myapplication.models.AudioConfigModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 class AudioPlayer(private val context: Context) {
     private var player: MediaPlayer? = null
-    var playing = false
-        private set
+    private var _playing = MutableStateFlow(false)
+    var playing = _playing.asStateFlow()
 
     fun playFile(file: File) {
-        stop() // Сначала останавливаем и освобождаем старый плеер
+        finalizeOldPlayer()
 
         player = MediaPlayer.create(context, file.toUri()).apply {
             Log.d(this::class.simpleName, "Start playing audiofile: $file")
-            playing = true
             setOnCompletionListener {
-                stop() // Автоочистка по завершении
+                stop()
+                _playing.value = false
+            }
+            setOnErrorListener { _, _, _ ->
+                _playing.value = false
+                false
             }
             start()
+            _playing.value = true
         }
     }
 
-    fun stop() {
+    fun stop(callFromStart: Boolean = false) {
         player?.apply {
             try {
                 if (isPlaying) stop()
             } catch (e: IllegalStateException) {
-                Log.w("AudioPlayer", "Stop called in invalid state")
+                Log.w(this::class.simpleName, "Stop called in invalid state")
             }
             release()
         }
         player = null
-        playing = false
-        Log.d("AudioPlayer", "Stopped playing")
+        if (!callFromStart){
+            _playing.value = false  // При рестарте не сбрасываем флаг
+        }
+        Log.d(this::class.simpleName, "Stopped playing")
     }
 
-    fun isPlaying(): Boolean = playing
+    fun isPlaying(): Boolean = _playing.value
+
+    fun finalizeOldPlayer(){
+        if (_playing.value) {           // Нужно для того чтобы убрать мерцание зеленой кнопки
+            stop(callFromStart=true)    // при переключении, т.е. сохраняем текущее состояние флага воспроизведения
+        }
+    }
 }

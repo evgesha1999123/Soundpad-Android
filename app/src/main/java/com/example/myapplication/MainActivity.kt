@@ -1,8 +1,8 @@
 package com.example.audiorecorder
 
+//import com.example.myapplication.models.AudioConfigModel
 import android.Manifest
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,42 +17,43 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import com.example.myapplication.Player.AudioPlayer
 import com.example.myapplication.Recorder.Dictaphone
 import com.example.myapplication.fileRepo.FileRepo
-//import com.example.myapplication.models.AudioConfigModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Icon
-import androidx.compose.runtime.collectAsState
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
                     var deleteFilesTrigger by remember { mutableIntStateOf(0) }
                     var deleting by remember { mutableStateOf(false) }
 
+
                     PlayButtons(
                         audioPlayer,
                         appendFileTrigger = refreshTrigger,
@@ -96,23 +98,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Composable
-    private fun DeleteChosenFileLaunchedEffect(
-        fileElements: SnapshotStateList<File>,
-        deletedFile: File,
-        deletedIndex: MutableIntState,
-        deleteSingleFile: Boolean,
-        fileRepo: FileRepo
-    ) {
-        LaunchedEffect(deletedFile) {
-            if (deleteSingleFile) {
-                val deleted = fileElements.remove(fileRepo.getFile(deletedIndex.intValue))
-                if (deleted) {
-                    deletedIndex.intValue = -1
-                }
-            }
-        }
-    }
     @Composable
     fun PlayButtons(
         audioPlayer: AudioPlayer,
@@ -145,15 +130,19 @@ class MainActivity : ComponentActivity() {
                 deletedIndex.intValue = -1
             }
         }
-
-        Box(
+        Card(
             modifier = Modifier
-                .padding(20.dp)
-                .size(75.dp)
+                .offset(y = -(100.dp))
+                .wrapContentSize()
+                .padding(10.dp)
+                .height(600.dp),
+            shape = RoundedCornerShape(16.dp),
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3), // 3 колонки
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -161,13 +150,16 @@ class MainActivity : ComponentActivity() {
                     val file = files[index]
                     Button(
                         onClick = {
-                            if (!deleteSingleFile){
+                            if (!deleteSingleFile) {
                                 coroutineScope.launch {
                                     currentPlayingIndex = index
-                                    audioPlayer.playFile(File(fileRepo.getFile(index).toString()))
+                                    audioPlayer.playFile(
+                                        File(
+                                            fileRepo.getFile(index).toString()
+                                        )
+                                    )
                                 }
-                            }
-                            else {
+                            } else {
                                 deletedIndex.intValue = index
                                 deletedFile.value = File(fileRepo.getFile(index).toString())
                             }
@@ -186,7 +178,9 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     ) {
-                        Text("")
+                        Text(
+                            text = ""
+                        )
                     }
                 }
             }
@@ -326,5 +320,14 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    @Composable
+    fun Timer(dictaphone: Dictaphone) {
+        val defaultTimeLabel = "00:00"
+        var recording by remember { mutableStateOf<Boolean>(false) }
+        Text(
+            text = defaultTimeLabel
+        )
     }
 }

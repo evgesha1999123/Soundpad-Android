@@ -42,14 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
-import com.example.myapplication.Player.AudioPlayer
-import com.example.myapplication.Recorder.Dictaphone
+import com.example.myapplication.player.AudioPlayer
 import com.example.myapplication.fileRepo.FileRepo
+import com.simplemobiletools.voicerecorder.recorder.Mp3Recorder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,10 +58,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        var audioConfig: AudioConfigModel = AudioConfigModel()
-        val dictaphone = Dictaphone(this)
+        val dictaphone = Mp3Recorder(context = this)
         val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
         val audioPlayer = AudioPlayer(context = this)
+        audioPlayer.initMediaPlayer()
         setContent {
             MaterialTheme {
                 Surface(
@@ -97,6 +95,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
 
     @Composable
     fun PlayButtons(
@@ -132,19 +131,19 @@ class MainActivity : ComponentActivity() {
         }
         Card(
             modifier = Modifier
-                .offset(y = -(100.dp))
+                .offset(y = -(120.dp))
                 .wrapContentSize()
                 .padding(10.dp)
-                .height(600.dp),
+                .height(620.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3), // 3 колонки
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(30.dp),
+                verticalArrangement = Arrangement.spacedBy(15.dp),
+                horizontalArrangement = Arrangement.spacedBy(15.dp)
             ) {
                 items(files.size) { index ->
                     val file = files[index]
@@ -189,7 +188,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MicrophoneControls(
-        dictaphone: Dictaphone,
+        recorder: Mp3Recorder,
         fileRepo: FileRepo,
         onRecordStopped: () -> Unit = {}
     ) {
@@ -204,18 +203,24 @@ class MainActivity : ComponentActivity() {
                 onClick = {
                     if (!recording) {
                         recording = true
-                        dictaphone.startRecording(
+                        recorder.prepare()
+                        recorder.setOutputFile(
                             File(
-                                fileRepo.getCurrentDirectory().toString(),
-                                "${System.currentTimeMillis()}.mp4"
-                            )
+                            fileRepo.getCurrentDirectory().toString(),
+                            "${System.currentTimeMillis()}.mp3"
+                            ).toString()
                         )
+                        recorder.start()
                     } else {
-                        recording = false
-                        dictaphone.stopRecording()
-                        if (!dictaphone.isRecording()) {
+                        try {
+                            recording = false
+                            recorder.stop()
+                            recorder.release()
                             onRecordStopped()
+                        } catch (e: Exception) {
+                            Log.e("Error closing recording stream:", e.toString())
                         }
+
                     }
                 },
                 modifier = Modifier
@@ -323,7 +328,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun Timer(dictaphone: Dictaphone) {
+    fun Timer(dictaphone: Mp3Recorder) {
         val defaultTimeLabel = "00:00"
         var recording by remember { mutableStateOf<Boolean>(false) }
         Text(

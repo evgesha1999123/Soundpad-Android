@@ -11,40 +11,55 @@ import java.io.FileOutputStream
 
 class Dictaphone(private val context: Context) {
     private var recorder: MediaRecorder? = null
-    var recording = false
+    private var recording = false
+    private var currentFileStream: FileOutputStream? = null
+
     private fun createRecorder(): MediaRecorder {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S){
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
-        }
-        else{
+        } else {
             MediaRecorder()
         }
     }
 
-    fun startRecording(outputFile: File){
-        createRecorder().apply{
+    fun startRecording(outputFile: File) {
+        stopRecording() // остановим предыдущий, если он был
+
+        currentFileStream = FileOutputStream(outputFile)
+        recorder = createRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setOutputFile(FileOutputStream(outputFile).fd)
+            setAudioEncodingBitRate(128000)
+            setAudioSamplingRate(44100)
+            setOutputFile(currentFileStream!!.fd)
 
             prepare()
-            Log.d(this::class.simpleName, "Start recording: $outputFile")
             start()
             recording = true
-            recorder = this
+            Log.d(this::class.simpleName, "Start recording: $outputFile")
         }
     }
 
-    fun stopRecording(){
-        Log.d(this::class.simpleName, "Recording stop")
-        recorder?.stop()
-        recorder?.reset()
+    fun stopRecording() {
+        recorder?.let {
+            try {
+                it.stop()
+            } catch (e: Exception) {
+                Log.e("Dictaphone", "Error stopping recorder: ${e.message}")
+            } finally {
+                it.reset()
+                it.release()
+            }
+        }
+        recorder = null
+
+        currentFileStream?.close()
+        currentFileStream = null
+
         recording = false
-
+        Log.d("Dictaphone", "Recording stopped")
     }
 
-    fun isRecording(): Boolean {
-        return recording
-    }
+    fun isRecording(): Boolean = recording
 }

@@ -14,44 +14,44 @@ class AudioPlayer(private val context: Context) {
     var playing = _playing.asStateFlow()
 
     fun playFile(file: File) {
-        finalizeOldPlayer()
+        // Остановим старый плеер и освободим ресурсы
+        stopOldPlayer()
 
-        player = MediaPlayer.create(context, file.toUri()).apply {
-            Log.d(this::class.simpleName, "Start playing audiofile: $file")
+        player = MediaPlayer().apply {
+            setDataSource(context, file.toUri())
             setOnCompletionListener {
                 stop()
                 _playing.value = false
             }
             setOnErrorListener { _, _, _ ->
-                _playing.value = false
-                false
+                stop()
+                true
             }
+            prepare()  // prepare синхронно, безопаснее чем create()
             start()
             _playing.value = true
+            Log.d(this::class.simpleName, "Start playing audiofile: $file")
         }
     }
 
-    fun stop(callFromStart: Boolean = false) {
+    private fun stopOldPlayer() {
         player?.apply {
             try {
                 if (isPlaying) stop()
             } catch (e: IllegalStateException) {
                 Log.w(this::class.simpleName, "Stop called in invalid state")
+            } finally {
+                release()
             }
-            release()
         }
         player = null
-        if (!callFromStart){
-            _playing.value = false  // При рестарте не сбрасываем флаг
-        }
-        Log.d(this::class.simpleName, "Stopped playing")
+        _playing.value = false
+        Log.d(this::class.simpleName, "Stopped playing old player")
+    }
+
+    fun stop() {
+        stopOldPlayer()
     }
 
     fun isPlaying(): Boolean = _playing.value
-
-    fun finalizeOldPlayer(){
-        if (_playing.value) {           // Нужно для того чтобы убрать мерцание зеленой кнопки
-            stop(callFromStart=true)    // при переключении, т.е. сохраняем текущее состояние флага воспроизведения
-        }
-    }
 }

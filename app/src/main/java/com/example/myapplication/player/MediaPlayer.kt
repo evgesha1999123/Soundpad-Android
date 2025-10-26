@@ -16,8 +16,8 @@ class AudioPlayer(private val context: Context) {
     val playing = _playing.asStateFlow()
     var playOnPreparation = true
 
-    public fun initMediaPlayer() {
-        mediaPlayer = MediaPlayer().apply {
+    fun initMediaPlayer() {
+        this.mediaPlayer?.apply {
             setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
             setAudioStreamType(AudioManager.STREAM_MUSIC)
 
@@ -33,7 +33,7 @@ class AudioPlayer(private val context: Context) {
 
     fun playFile(file: File) {
         stopOldPlayer()
-
+        this.initMediaPlayer()
         try {
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(file.absolutePath)

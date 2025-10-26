@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import com.example.myapplication.player.AudioPlayer
 import com.example.myapplication.fileRepo.FileRepo
+import com.example.myapplication.helpers.AudioTuner
 import com.simplemobiletools.voicerecorder.recorder.Mp3Recorder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,7 +59,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dictaphone = Mp3Recorder(context = this)
+        val dictaphone = Mp3Recorder(context = this, audioConfig = AudioTuner(this).detectOptimalConfig())
         val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
         val audioPlayer = AudioPlayer(context = this)
         audioPlayer.initMediaPlayer()

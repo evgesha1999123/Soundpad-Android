@@ -11,6 +11,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.example.myapplication.helpers.SAMPLE_RATE
+import com.example.myapplication.models.AudioConfig
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
 import java.io.*
@@ -18,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
-class Mp3Recorder(val context: Context) : Recorder {
+class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder {
     private var mp3buffer: ByteArray = ByteArray(0)
     private var isPaused = AtomicBoolean(false)
     private var isStopped = AtomicBoolean(false)
@@ -30,9 +31,9 @@ class Mp3Recorder(val context: Context) : Recorder {
     private var audioRecord: AudioRecord? = null
 
     private val minBufferSize = AudioRecord.getMinBufferSize(
-        SAMPLE_RATE,
-        AudioFormat.CHANNEL_IN_MONO,
-        AudioFormat.ENCODING_PCM_16BIT
+        audioConfig.sampleRate,
+        audioConfig.channelIn,
+        audioConfig.encoding
     )
 
     override fun setOutputFile(path: String) {
@@ -44,25 +45,26 @@ class Mp3Recorder(val context: Context) : Recorder {
     @SuppressLint("MissingPermission")
     override fun start() {
         val rawData = ShortArray(minBufferSize)
-        mp3buffer = ByteArray((7200 + rawData.size * 2 * 1.25).toInt())
+        mp3buffer = ByteArray((audioConfig.bufferSize + rawData.size * 2 * 1.25).toInt())
 
         outputStream = FileOutputStream(File(outputPath!!))
 
         androidLame = LameBuilder()
-            .setInSampleRate(SAMPLE_RATE)
-            .setOutBitrate(128)
-            .setOutSampleRate(SAMPLE_RATE)
-            .setOutChannels(1)
+            .setInSampleRate(audioConfig.sampleRate)
+            .setOutBitrate(audioConfig.sampleRate)
+            .setOutSampleRate(audioConfig.sampleRate)
+            .setOutChannels(audioConfig.channelOut)
             .build()
 
         // 🎯 создаём новый AudioRecord каждый раз
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            minBufferSize * 2
+            audioConfig.sampleRate,
+            audioConfig.channelIn,
+            audioConfig.encoding,
+            audioConfig.bufferSize
         )
+
 
         isStopped.set(false)
         isPaused.set(false)

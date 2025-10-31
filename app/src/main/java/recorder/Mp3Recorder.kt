@@ -5,10 +5,6 @@ import android.content.Context
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.example.myapplication.models.AudioConfig
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder

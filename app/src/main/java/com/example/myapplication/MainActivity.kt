@@ -112,11 +112,11 @@ class MainActivity : ComponentActivity() {
         deleteFilesTrigger: Int,
         deleteSingleFile: Boolean
     ) {
-        var files = remember { mutableStateListOf<File>() }
+        val files = remember { mutableStateListOf<File>() }
         val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        var deletedIndex = remember { mutableIntStateOf(-1) }
-        var deletedFile = remember { mutableStateOf(File("")) }
-        var playing = audioPlayer.playing.collectAsState()
+        val deletedIndex = remember { mutableIntStateOf(-1) }
+        val deletedFile = remember { mutableStateOf(File("")) }
+        val playing = audioPlayer.playing.collectAsState()
         var currentPlayingIndex by remember { mutableStateOf<Int?>(null) }
 
         LaunchedEffect(appendFileTrigger, deleteFilesTrigger) {

@@ -1,26 +1,28 @@
 package com.simplemobiletools.voicerecorder.recorder
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
-import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.widget.Toast
-import com.example.myapplication.helpers.SAMPLE_RATE
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.example.myapplication.models.AudioConfig
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
-import java.io.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
 class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder {
     private var mp3buffer: ByteArray = ByteArray(0)
+
+    var recording = MutableStateFlow<Boolean>(false)
     private var isPaused = AtomicBoolean(false)
     private var isStopped = AtomicBoolean(false)
     private var amplitude = AtomicInteger(0)
@@ -72,6 +74,7 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
         recordingThread = Thread {
             try {
                 audioRecord?.startRecording()
+                recording.value = true
                 while (!isStopped.get()) {
                     if (!isPaused.get()) {
                         val count = audioRecord?.read(rawData, 0, minBufferSize) ?: 0
@@ -96,9 +99,11 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
                     outputStream?.close()
                     audioRecord?.stop()
                     audioRecord?.release()
+                    recording.value = false
                     Log.d("Mp3Recorder", "Recording thread finished")
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    recording.value = false
                 }
             }
         }
@@ -108,6 +113,7 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
 
     override fun stop() {
         isStopped.set(true)
+        recording.value = false
     }
 
     override fun release() {

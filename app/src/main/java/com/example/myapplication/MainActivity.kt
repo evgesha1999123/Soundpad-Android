@@ -53,16 +53,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import recorder.TimerViewModel
 import java.io.File
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dictaphone = Mp3Recorder(context = this, audioConfig = AudioTuner(this).detectOptimalConfig())
+
+        val mp3Recorder = Mp3Recorder(context = this, audioConfig = AudioTuner(this).detectOptimalConfig())
         val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
-        val audioPlayer = AudioPlayer(context = this)
-        audioPlayer.initMediaPlayer()
+        val mediaPlayer = AudioPlayer(context = this)
+        val timerViewModel = TimerViewModel()
+
+        mediaPlayer.initMediaPlayer()
+
         setContent {
             MaterialTheme {
                 Surface(
@@ -83,15 +88,16 @@ class MainActivity : ComponentActivity() {
 
 
                     PlayButtons(
-                        audioPlayer,
+                        mediaPlayer,
                         appendFileTrigger = refreshTrigger,
                         deleteFilesTrigger = deleteFilesTrigger,
                         deleteSingleFile = deleting,
                         fileRepo = fileRepo
                     )
-                    MicrophoneControls(dictaphone, fileRepo, { refreshTrigger++ })
+                    MicrophoneControls(mp3Recorder, fileRepo, { refreshTrigger++ })
                     FileControls(fileRepo, { deleteFilesTrigger++ }, onDeletingChange = { newValue -> deleting = newValue })
-                    StopPlayAudioControl(audioPlayer)
+                    StopPlayAudioControl(mediaPlayer)
+                    Timer(mp3Recorder, timerViewModel)
                 }
             }
         }
@@ -188,55 +194,6 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun MicrophoneControls(
-        recorder: Mp3Recorder,
-        fileRepo: FileRepo,
-        onRecordStopped: () -> Unit = {}
-    ) {
-        var recording by remember { mutableStateOf(false) }
-
-        Box(
-            modifier = Modifier
-                .padding(20.dp)
-                .size(75.dp)
-        ) {
-            Button(
-                onClick = {
-                    if (!recording) {
-                        recording = true
-                        recorder.prepare()
-                        recorder.setOutputFile(
-                            File(
-                            fileRepo.getCurrentDirectory().toString(),
-                            "${System.currentTimeMillis()}.mp3"
-                            ).toString()
-                        )
-                        recorder.start()
-                    } else {
-                        try {
-                            recording = false
-                            recorder.stop()
-                            recorder.release()
-                            onRecordStopped()
-                        } catch (e: Exception) {
-                            Log.e("Error closing recording stream:", e.toString())
-                        }
-
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(100.dp) // квадратный размер
-                    .aspectRatio(1f), // гарантирует квадрат
-                shape = RoundedCornerShape(8.dp) // или RectangleShape
-            ) {
-                Text(if (recording) "✋" else "\uD83D\uDD34", fontSize = 35.sp)
-            }
-        }
-    }
-
-    @Composable
     fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit, onDeletingChange: (Boolean) -> Unit) {
         var deleting by remember { mutableStateOf(false) }
         Box(
@@ -262,7 +219,8 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier
                         .size(50.dp)
-                        .aspectRatio(1f),
+                        .aspectRatio(1f)
+                        .offset(x = 20.dp),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(0.dp)
                 ) {
@@ -283,7 +241,8 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier
                         .size(50.dp)
-                        .aspectRatio(1f),
+                        .aspectRatio(1f)
+                        .offset(x = 20.dp),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(0.dp)
                 ) {
@@ -299,13 +258,62 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
+    fun MicrophoneControls(
+        recorder: Mp3Recorder,
+        fileRepo: FileRepo,
+        onRecordStopped: () -> Unit = {}
+    ) {
+        var recording by remember { mutableStateOf(false) }
+
+        Box(
+            modifier = Modifier
+                .padding(20.dp)
+                .size(75.dp)
+        ) {
+            Button(
+                onClick = {
+                    if (!recording) {
+                        recording = true
+                        recorder.prepare()
+                        recorder.setOutputFile(
+                            File(
+                                fileRepo.getCurrentDirectory().toString(),
+                                "${System.currentTimeMillis()}.mp3"
+                            ).toString()
+                        )
+                        recorder.start()
+                    } else {
+                        try {
+                            recording = false
+                            recorder.stop()
+                            recorder.release()
+                            onRecordStopped()
+                        } catch (e: Exception) {
+                            Log.e("Error closing recording stream:", e.toString())
+                        }
+
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(8.dp)
+                    .size(100.dp)
+                    .aspectRatio(1f)
+                    .offset(x = (-1).dp),
+                shape = RoundedCornerShape(8.dp) // или RectangleShape
+            ) {
+                Text(if (recording) "✋" else "\uD83D\uDD34", fontSize = 35.sp)
+            }
+        }
+    }
+    @Composable
     fun StopPlayAudioControl(audioPlayer: AudioPlayer){
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(vertical = 29.dp)
-                .offset(x = (-25).dp),
-            contentAlignment = Alignment.BottomCenter
+                .offset(x = (-39).dp),
+            contentAlignment = Alignment.BottomEnd
         ) {
             Button(
                 onClick = {
@@ -329,11 +337,40 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun Timer(dictaphone: Mp3Recorder) {
-        val defaultTimeLabel = "00:00"
-        var recording by remember { mutableStateOf<Boolean>(false) }
-        Text(
-            text = defaultTimeLabel
-        )
+    fun Timer(mp3Recorder: Mp3Recorder, timerViewModel: TimerViewModel) {
+        val recording by mp3Recorder.recording.collectAsState()
+        val timeInMillis by timerViewModel.timeInMillis.collectAsState()
+        val timerLabel = formatTime(timeInMillis)
+
+        LaunchedEffect(recording) {
+            if (recording) {
+                timerViewModel.startTimer()
+            }
+            else {
+                timerViewModel.stopTimer()
+                timerViewModel.resetTimer()
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .padding(20.dp)
+                .size(120.dp)
+        ) {
+            Text(
+                text = timerLabel,
+                modifier = Modifier
+                    .size(width = 200.dp, height = 75.dp)
+                    .align(alignment = Alignment.BottomCenter)
+                    .offset(x = 60.dp, y = -(100.dp)),
+                fontSize = 28.sp
+            )
+        }
+    }
+
+    private fun formatTime(millis: Long): String {
+        val seconds = (millis / 1000) % 60
+        val minutes = (millis / (1000 * 60)) % 60
+        return String.format("%02d:%02d", minutes, seconds)
     }
 }

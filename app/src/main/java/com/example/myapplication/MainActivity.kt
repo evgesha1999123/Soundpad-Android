@@ -1,6 +1,5 @@
 package com.example.audiorecorder
 
-//import com.example.myapplication.models.AudioConfigModel
 import android.Manifest
 import android.os.Bundle
 import android.util.Log
@@ -23,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -86,7 +87,6 @@ class MainActivity : ComponentActivity() {
                     var deleteFilesTrigger by remember { mutableIntStateOf(0) }
                     var deleting by remember { mutableStateOf(false) }
 
-
                     PlayButtons(
                         mediaPlayer,
                         appendFileTrigger = refreshTrigger,
@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
                     FileControls(fileRepo, { deleteFilesTrigger++ }, onDeletingChange = { newValue -> deleting = newValue })
                     StopPlayAudioControl(mediaPlayer)
                     Timer(mp3Recorder, timerViewModel)
+                    SettingsButton()
                 }
             }
         }
@@ -138,10 +139,10 @@ class MainActivity : ComponentActivity() {
         }
         Card(
             modifier = Modifier
-                .offset(y = -(120.dp))
+                .offset(y = -(50.dp))
                 .wrapContentSize()
                 .padding(10.dp)
-                .height(620.dp),
+                .height(590.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             LazyVerticalGrid(
@@ -196,6 +197,8 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit, onDeletingChange: (Boolean) -> Unit) {
         var deleting by remember { mutableStateOf(false) }
+        var showPurgeFilesDialog by remember { mutableStateOf(false) }
+
         Box(
             modifier = Modifier
                 .padding(20.dp)
@@ -205,7 +208,7 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.align(Alignment.BottomStart), // ← Выравниваем столбец в левом нижнем углу
                 horizontalAlignment = Alignment.Start // ← Выравниваем кнопки по левому краю внутри столбца
             ) {
-                // Кнопка с минусом - сверху
+                // Удаление выбранного файла
                 Button(
                     onClick = {
                         if (!deleting) {
@@ -233,11 +236,10 @@ class MainActivity : ComponentActivity() {
                 // Небольшой отступ между кнопками
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Кнопка с корзинкой - снизу
+                // Удаление всех файлов из плейлиста
                 Button(
                     onClick = {
-                        fileRepo.purgeDirectory()
-                        onPurgeFiles()
+                        showPurgeFilesDialog = true
                     },
                     modifier = Modifier
                         .size(50.dp)
@@ -253,6 +255,33 @@ class MainActivity : ComponentActivity() {
                         Text("\uD83D\uDDD1\uFE0F", fontSize = 20.sp)
                     }
                 }
+            }
+        }
+        if (showPurgeFilesDialog) {
+            Box() {
+                AlertDialog(
+                    onDismissRequest = { showPurgeFilesDialog = false },
+                    title = { Text("Удаление файлов") },
+                    text = {Text("Вы действительно хотите удалить ВСЕ файлы из текущего плейлиста?")},
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                fileRepo.purgeDirectory()
+                                onPurgeFiles()
+                                showPurgeFilesDialog = false
+                            },
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                        ) {
+                            Text("Да")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showPurgeFilesDialog = false }) {
+                            Text("Отмена")
+                        }
+                    }
+                )
             }
         }
     }
@@ -362,7 +391,7 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .size(width = 200.dp, height = 75.dp)
                     .align(alignment = Alignment.BottomCenter)
-                    .offset(x = 60.dp, y = -(100.dp)),
+                    .offset(x = 60.dp, y = -(85.dp)),
                 fontSize = 28.sp
             )
         }
@@ -372,5 +401,54 @@ class MainActivity : ComponentActivity() {
         val seconds = (millis / 1000) % 60
         val minutes = (millis / (1000 * 60)) % 60
         return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    @Composable
+    fun SettingsButton() {
+        // Локальное состояние: показывать диалог или нет
+        var showSettingsDialog by remember { mutableStateOf(false) }
+
+        // Показываем диалог, если нужно
+        if (showSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showSettingsDialog = false },
+                title = { Text("Настройки") },
+                text = {
+                    Column {
+                        Text("Тема приложения")
+                        // Позже сюда добавите Switch, RadioButtons и т.д.
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showSettingsDialog = false }) {
+                        Text("Готово")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSettingsDialog = false }) {
+                        Text("Отмена")
+                    }
+                }
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .padding(20.dp)
+                .size(30.dp)
+        ) {
+            Button(
+                onClick = { showSettingsDialog = true }, // просто включаем флаг
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .size(50.dp)
+                    .aspectRatio(1f)
+                    .offset(x = 20.dp, y = 15.dp),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("☰", fontSize = 28.sp)
+            }
+        }
     }
 }

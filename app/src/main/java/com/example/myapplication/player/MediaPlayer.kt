@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
-class AudioPlayer(private val context: Context) {
+class MediaPlayer(private val context: Context) {
 
     private var mediaPlayer: MediaPlayer? = null
     private var _playing = MutableStateFlow(false)

@@ -70,7 +70,9 @@ fun BackButton(navController: NavController) {
     Button(
         onClick = {
             Log.i("navigation", "navigate back")
-            navController.navigate("home")
+            navController.navigate(Screen.HOME.route) {
+                popUpTo(Screen.HOME.route) { inclusive = true }
+            }
         },
         modifier = Modifier.size(50.dp),
         shape = RoundedCornerShape(8.dp),

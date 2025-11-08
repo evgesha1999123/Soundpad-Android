@@ -1,17 +1,25 @@
 package com.example.myapplication.navigation
 
+import android.app.Activity
+import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -23,6 +31,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,17 +48,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import com.example.myapplication.fileRepo.FilePickerContract
 import com.example.myapplication.fileRepo.FileRepo
 import com.example.myapplication.player.MediaPlayer
-import com.simplemobiletools.voicerecorder.recorder.Mp3Recorder
+import com.example.myapplication.recorder.Mp3Recorder
+import com.example.myapplication.recorder.TimerViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import recorder.TimerViewModel
 import java.io.File
 
 @Composable
@@ -70,7 +84,10 @@ fun HomeScreen(
         fileRepo = fileRepo
     )
     MicrophoneControls(mp3Recorder, fileRepo, { refreshTrigger++ })
-    FileControls(fileRepo, { deleteFilesTrigger++ }, onDeletingChange = { newValue -> deleting = newValue })
+    FileControls(
+        fileRepo,
+        { deleteFilesTrigger++ },
+        onDeletingChange = { newValue -> deleting = newValue })
     StopPlayAudioControl(mediaPlayer)
     Timer(mp3Recorder, timerViewModel)
     MenuButton(navController)
@@ -166,7 +183,11 @@ fun PlayButtons(
 }
 
 @Composable
-fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit, onDeletingChange: (Boolean) -> Unit) {
+fun FileControls(
+    fileRepo: FileRepo,
+    onPurgeFiles: () -> Unit,
+    onDeletingChange: (Boolean) -> Unit
+) {
     var deleting by remember { mutableStateOf(false) }
     var showPurgeFilesDialog by remember { mutableStateOf(false) }
 
@@ -184,8 +205,7 @@ fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit, onDeletingChange:
                 onClick = {
                     if (!deleting) {
                         deleting = true
-                    }
-                    else {
+                    } else {
                         deleting = false
                     }
                     Log.d("Deleting", "Deleting: $deleting")
@@ -201,7 +221,8 @@ fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit, onDeletingChange:
                 Text(
                     text = if (deleting) "-" else "♫",
                     color = if (deleting) Color.Red else Color.Black,
-                    fontSize = if (deleting) 45.sp else 25.sp)
+                    fontSize = if (deleting) 45.sp else 25.sp
+                )
             }
 
             // Небольшой отступ между кнопками
@@ -227,13 +248,20 @@ fun FileControls(fileRepo: FileRepo, onPurgeFiles: () -> Unit, onDeletingChange:
                 }
             }
         }
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart),
+            horizontalAlignment = Alignment.Start
+        ) {
+            PlaylistCreatorButton()
+            FilePickerButton({ Log.i("File picker", "files selected") })
+        }
     }
     if (showPurgeFilesDialog) {
         Box() {
             AlertDialog(
                 onDismissRequest = { showPurgeFilesDialog = false },
                 title = { Text("Удаление файлов") },
-                text = {Text("Вы действительно хотите удалить ВСЕ файлы из текущего плейлиста?")},
+                text = { Text("Вы действительно хотите удалить ВСЕ файлы из текущего плейлиста?") },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -306,8 +334,9 @@ fun MicrophoneControls(
         }
     }
 }
+
 @Composable
-fun StopPlayAudioControl(audioPlayer: com.example.myapplication.player.MediaPlayer){
+fun StopPlayAudioControl(audioPlayer: com.example.myapplication.player.MediaPlayer) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -345,8 +374,7 @@ fun Timer(mp3Recorder: Mp3Recorder, timerViewModel: TimerViewModel) {
     LaunchedEffect(recording) {
         if (recording) {
             timerViewModel.startTimer()
-        }
-        else {
+        } else {
             timerViewModel.stopTimer()
             timerViewModel.resetTimer()
         }
@@ -378,7 +406,7 @@ fun MenuButton(navController: NavController) {
         Button(
             onClick = {
                 Log.i("Menu button", "Open Menu...")
-                navController.navigate("menu")
+                navController.navigate(Screen.MENU.route)
             },
             modifier = Modifier
                 .align(alignment = Alignment.TopStart)
@@ -397,4 +425,230 @@ private fun formatTime(millis: Long): String {
     val seconds = (millis / 1000) % 60
     val minutes = (millis / (1000 * 60)) % 60
     return String.format("%02d:%02d", minutes, seconds)
+}
+
+// Добавление файлов в текущий плейлист
+@Composable
+fun FilePickerButton(
+    onFilesSelected: (List<Uri>) -> Unit,
+    allowedExtensions: List<String> = listOf("mp3", "wav", "aac"),
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(false) }
+
+    // Получаем MIME-типы из расширений
+    val mimeTypes = remember(allowedExtensions) {
+        allowedExtensions.mapNotNull { ext ->
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+        }.ifEmpty { listOf("*/*") }
+    }
+
+    // Лаунчер для выбора файлов
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uris = mutableListOf<Uri>()
+            result.data?.let { data ->
+                when {
+                    data.clipData != null -> {
+                        val clipData = data.clipData!!
+                        for (i in 0 until clipData.itemCount) {
+                            uris.add(clipData.getItemAt(i).uri)
+                        }
+                    }
+
+                    data.data != null -> {
+                        uris.add(data.data!!)
+                    }
+
+                    else -> {
+
+                    }
+                }
+            }
+
+            // фильтруем по расширениям, если пользователь выбрал не то
+            val filteredUris = uris.filter { uri ->
+                val ext = context.contentResolver.getType(uri)
+                    ?.substringAfterLast('/')
+                    ?.lowercase() ?: ""
+                allowedExtensions.any { ext.contains(it, ignoreCase = true) }
+            }
+
+            onFilesSelected(filteredUris)
+        }
+    }
+
+    // Кнопка, открывающая диалог
+    Box() {
+        Button(
+            onClick = { showDialog = true },
+            modifier = Modifier
+                .align(alignment = Alignment.BottomStart)
+                .size(50.dp)
+                .aspectRatio(1f)
+                .offset(x = 77.dp),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text("\uD83D\uDCC2", fontSize = 32.sp)
+        }
+    }
+
+    // Диалог
+    if (showDialog) {
+        FilePickerDialog(
+            onDismiss = { showDialog = false },
+            onConfirm = {
+                showDialog = false
+                // Используем твой контракт
+                val intent =
+                    FilePickerContract.createPickMultipleFilesIntent(*mimeTypes.toTypedArray())
+                filePickerLauncher.launch(intent)
+            },
+            allowedExtensions = allowedExtensions
+        )
+    }
+}
+
+//Диалог с выбором файлов
+@Composable
+fun FilePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    allowedExtensions: List<String>
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Выбор файлов",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Разрешенные форматы: ${allowedExtensions.joinToString(", ")}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = onConfirm) {
+                        Text("Выбрать")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Создание нового плейлиста
+@Composable
+fun PlaylistCreatorButton() {
+    var showDialog by remember { mutableStateOf(false) }
+    Box() {
+        Button(
+            onClick = { showDialog = true },
+            modifier = Modifier
+                .align(alignment = Alignment.BottomStart)
+                .size(50.dp)
+                .aspectRatio(1f)
+                .offset(x = 77.dp, y = -(8.dp)),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text("➕", fontSize = 32.sp)
+        }
+    }
+    if (showDialog) {
+        FileCreatorDialog(
+            onDismiss = { showDialog = false },
+            onConfirm = {
+                showDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun FileCreatorDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var playlistName by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Создание плейлиста",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Введите название для нового плейлиста",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Поле ввода для названия плейлиста
+                OutlinedTextField(
+                    value = playlistName,
+                    onValueChange = { playlistName = it },
+                    label = { Text("Название плейлиста") },
+                    placeholder = { Text("Мой плейлист") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Отмена")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            println("Создан плейлист: $playlistName")
+                            onConfirm(playlistName)
+                        },
+                        enabled = playlistName.isNotBlank()
+                    ) {
+                        Text("Создать")
+                    }
+                }
+            }
+        }
+    }
 }

@@ -17,8 +17,8 @@ import com.example.myapplication.helpers.AudioTuner
 import com.example.myapplication.navigation.HomeScreen
 import com.example.myapplication.navigation.MenuScreen
 import com.example.myapplication.player.MediaPlayer
-import com.simplemobiletools.voicerecorder.recorder.Mp3Recorder
-import recorder.TimerViewModel
+import com.example.myapplication.recorder.Mp3Recorder
+import com.example.myapplication.recorder.TimerViewModel
 import java.io.File
 
 class MainActivity : ComponentActivity() {

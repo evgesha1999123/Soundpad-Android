@@ -1,4 +1,4 @@
-package com.simplemobiletools.voicerecorder.recorder
+package com.example.myapplication.recorder
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -8,12 +8,12 @@ import android.util.Log
 import com.example.myapplication.models.AudioConfig
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
+import com.simplemobiletools.voicerecorder.recorder.Recorder
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.abs
 
 class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder {
     private var mp3buffer: ByteArray = ByteArray(0)
@@ -78,7 +78,6 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
                             val encoded = androidLame!!.encode(rawData, rawData, count, mp3buffer)
                             if (encoded > 0) {
                                 outputStream!!.write(mp3buffer, 0, encoded)
-                                updateAmplitude(rawData)
                             }
                         }
                     }
@@ -118,13 +117,5 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
         androidLame?.close()
         androidLame = null
         audioRecord = null
-    }
-
-    private fun updateAmplitude(data: ShortArray) {
-        var sum = 0L
-        for (i in 0 until minBufferSize step 2) {
-            sum += abs(data[i].toInt())
-        }
-        amplitude.set((sum / (minBufferSize / 8)).toInt())
     }
 }

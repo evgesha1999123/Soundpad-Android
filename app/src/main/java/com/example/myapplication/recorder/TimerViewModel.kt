@@ -1,4 +1,4 @@
-package recorder
+package com.example.myapplication.recorder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

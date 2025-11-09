@@ -20,7 +20,6 @@ import com.example.myapplication.navigation.Screen
 import com.example.myapplication.player.MediaPlayer
 import com.example.myapplication.recorder.Mp3Recorder
 import com.example.myapplication.recorder.TimerViewModel
-import java.io.File
 
 class MainActivity : ComponentActivity() {
 
@@ -28,7 +27,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val mp3Recorder = Mp3Recorder(context = this, audioConfig = AudioTuner(this).detectOptimalConfig())
-        val fileRepo = FileRepo(File(filesDir.absolutePath, "records"), this)
+        val fileRepo = FileRepo("records", this)
         val mediaPlayer = MediaPlayer(context = this)
         val timerViewModel = TimerViewModel()
 
@@ -62,7 +61,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(Screen.MENU.route) {
-                            MenuScreen( navController )
+                            MenuScreen( navController , fileRepo)
                         }
                     }
                 }

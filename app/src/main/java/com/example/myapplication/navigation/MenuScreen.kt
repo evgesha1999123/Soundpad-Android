@@ -1,6 +1,7 @@
 package com.example.myapplication.navigation
 
 import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,13 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.myapplication.fileRepo.FileRepo
 
 @Composable
-fun MenuScreen(navController: NavController) {
-    val playlistList = listOf(
-        "Плейлист 1", "Плейлист 2", "Мои треки", "Подкасты",
-    )
-
+fun MenuScreen(navController: NavController, fileRepo: FileRepo) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,8 +43,10 @@ fun MenuScreen(navController: NavController) {
         }
 
         PlaylistMenu(
-            playlistNames = playlistList,
-            modifier = Modifier.weight(1f)
+            playlistNames = fileRepo.getAllPlaylists(),
+            modifier = Modifier.weight(1f),
+            fileRepo,
+            navController
         )
     }
 }
@@ -69,26 +69,37 @@ fun BackButton(navController: NavController) {
 }
 
 @Composable
-fun PlaylistMenu(playlistNames: List<String>, modifier: Modifier = Modifier) {
+fun PlaylistMenu(
+    playlistNames: MutableList<String>,
+    modifier: Modifier = Modifier,
+    fileRepo: FileRepo,
+    navController: NavController
+) {
     LazyColumn(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
         items(playlistNames) { playlistName ->
-            PlaylistItem(playlistName = playlistName)
+            PlaylistItem(playlistName = playlistName, fileRepo, navController)
         }
     }
 }
 
 @Composable
-fun PlaylistItem(playlistName: String) {
+fun PlaylistItem(playlistName: String, fileRepo: FileRepo, navController: NavController) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         shape = RoundedCornerShape(8.dp),
-        onClick = { /* открыть плейлист */ }
+        onClick = {
+            fileRepo.setDirectory(playlistName)
+            fileRepo.listFiles()
+            navController.navigate(Screen.HOME.route) {
+                popUpTo(Screen.HOME.route) { inclusive = true }
+            }
+        }
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -99,6 +110,28 @@ fun PlaylistItem(playlistName: String) {
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(start = 12.dp)
             )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { Log.i("Изменить", "Изменить имя плейлиста") },
+                        modifier = Modifier.size(64.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("✏\uFE0F")
+                    }
+
+                    Button(
+                        onClick = { Log.i("Удалить плейлист", "Удалить этот плейлист") },
+                        modifier = Modifier.size(64.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("❌")
+                    }
+                }
+            }
         }
     }
 }

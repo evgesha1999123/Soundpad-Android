@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -49,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -75,6 +77,24 @@ fun HomeScreen(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var deleteFilesTrigger by remember { mutableIntStateOf(0) }
     var deleting by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .size(256.dp)
+            .fillMaxWidth()
+    ) {
+        Text(
+            text = "Плейлист: ${fileRepo.getCurrentPlaylistName()}",
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = -(32).dp ,y = 45.dp)
+                .widthIn(max = 200.dp), // Ограничиваем максимальную ширину
+            fontSize = 20.sp,
+            maxLines = 2, // Максимум 2 строки
+            overflow = TextOverflow.Ellipsis, // "..." если не помещается
+            softWrap = true // Разрешаем перенос по словам
+        )
+    }
 
     PlayButtons(
         mediaPlayer,
@@ -252,7 +272,7 @@ fun FileControls(
             modifier = Modifier.align(Alignment.BottomStart),
             horizontalAlignment = Alignment.Start
         ) {
-            PlaylistCreatorButton()
+            PlaylistCreatorButton(fileRepo)
             FilePickerButton({ Log.i("File picker", "files selected") })
         }
     }
@@ -265,7 +285,7 @@ fun FileControls(
                 confirmButton = {
                     Button(
                         onClick = {
-                            fileRepo.purgeDirectory()
+                            fileRepo.purgeCurrentDirectory()
                             onPurgeFiles()
                             showPurgeFilesDialog = false
                         },
@@ -562,7 +582,7 @@ fun FilePickerDialog(
 
 // Создание нового плейлиста
 @Composable
-fun PlaylistCreatorButton() {
+fun PlaylistCreatorButton(fileRepo: FileRepo) {
     var showDialog by remember { mutableStateOf(false) }
     Box() {
         Button(
@@ -583,7 +603,8 @@ fun PlaylistCreatorButton() {
             onDismiss = { showDialog = false },
             onConfirm = {
                 showDialog = false
-            }
+            },
+            fileRepo
         )
     }
 }
@@ -591,7 +612,8 @@ fun PlaylistCreatorButton() {
 @Composable
 fun FileCreatorDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String) -> Unit,
+    fileRepo: FileRepo
 ) {
     var playlistName by remember { mutableStateOf("") }
 
@@ -640,7 +662,8 @@ fun FileCreatorDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            println("Создан плейлист: $playlistName")
+                            Log.i("Создание плейлиста", "Создан плейлист: $playlistName")
+                            fileRepo.createPlaylist(playlistName)
                             onConfirm(playlistName)
                         },
                         enabled = playlistName.isNotBlank()

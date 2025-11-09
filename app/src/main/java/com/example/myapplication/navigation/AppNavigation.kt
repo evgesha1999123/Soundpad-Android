@@ -16,6 +16,6 @@ fun AppNavigationGraph(mp3Recorder: Mp3Recorder, fileRepo: FileRepo, mediaPlayer
         composable(Screen.HOME.route) {
             HomeScreen(mp3Recorder = mp3Recorder, fileRepo = fileRepo, mediaPlayer = mediaPlayer, timerViewModel = timerViewModel, navController = navController)
         }
-        composable(Screen.MENU.route) { MenuScreen(navController) }
+        composable(Screen.MENU.route) { MenuScreen(navController, fileRepo) }
     }
 }

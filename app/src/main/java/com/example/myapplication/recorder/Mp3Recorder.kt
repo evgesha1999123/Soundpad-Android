@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder {
     private var mp3buffer: ByteArray = ByteArray(0)
@@ -21,7 +20,6 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
     var recording = MutableStateFlow<Boolean>(false)
     private var isPaused = AtomicBoolean(false)
     private var isStopped = AtomicBoolean(false)
-    private var amplitude = AtomicInteger(0)
     private var outputPath: String? = null
     private var androidLame: AndroidLame? = null
     private var outputStream: FileOutputStream? = null

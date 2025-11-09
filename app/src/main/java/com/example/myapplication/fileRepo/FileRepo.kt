@@ -1,12 +1,13 @@
 package com.example.myapplication.fileRepo
 
+import android.content.Context
 import android.util.Log
+import com.example.myapplication.playlist_repository.PlaylistRepository
 import java.io.File
 
-// TODO: Продумать возможность создания кастомных папок (например, для скачиваемых сэмплов)
-// TODO: Сделать проверку на существование файлов и директории во избежание вылетов
-class FileRepo(_directory: File) {
+class FileRepo(_directory: File, private val context: Context) {
     private var directory = _directory
+    private val playlistRepository = PlaylistRepository(context)
     init {
         ensureDirCreated()
     }
@@ -37,10 +38,6 @@ class FileRepo(_directory: File) {
         return file
     }
 
-    fun addFile(file: File): Boolean {
-        Log.d(this::class.simpleName, "Creating new file '$file'")
-        return file.createNewFile()
-    }
 
     fun deleteFile(file: File): Boolean {
         Log.d(this::class.simpleName, "Deleting file '$file'")

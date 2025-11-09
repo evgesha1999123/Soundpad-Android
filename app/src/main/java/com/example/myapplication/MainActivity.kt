@@ -16,6 +16,7 @@ import com.example.myapplication.fileRepo.FileRepo
 import com.example.myapplication.helpers.AudioTuner
 import com.example.myapplication.navigation.HomeScreen
 import com.example.myapplication.navigation.MenuScreen
+import com.example.myapplication.navigation.Screen
 import com.example.myapplication.player.MediaPlayer
 import com.example.myapplication.recorder.Mp3Recorder
 import com.example.myapplication.recorder.TimerViewModel
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val mp3Recorder = Mp3Recorder(context = this, audioConfig = AudioTuner(this).detectOptimalConfig())
-        val fileRepo = FileRepo(File(filesDir.absolutePath, "records"))
+        val fileRepo = FileRepo(File(filesDir.absolutePath, "records"), this)
         val mediaPlayer = MediaPlayer(context = this)
         val timerViewModel = TimerViewModel()
 
@@ -50,8 +51,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "home") {
-                        composable("home") {
+                    NavHost(navController = navController, startDestination = Screen.HOME.route) {
+                        composable(Screen.HOME.route) {
                             HomeScreen(
                                 mp3Recorder = mp3Recorder,
                                 fileRepo = fileRepo,
@@ -60,7 +61,7 @@ class MainActivity : ComponentActivity() {
                                 navController = navController
                             )
                         }
-                        composable("menu") {
+                        composable(Screen.MENU.route) {
                             MenuScreen( navController )
                         }
                     }

@@ -75,13 +75,8 @@ class PlaylistRepository(private val context: Context) {
         return readAll().find { it.name == name }
     }
 
-    // Поиск плейлиста по UID
-    private fun findPlaylistByUid(uid: String): PlaylistSchema? {
-        return readAll().find { it.uid == uid }
-    }
 
     // ========== PLAYLIST OPERATIONS ==========
-
     // Создание плейлиста
     fun createPlaylist(playlistSchema: PlaylistSchema): Result<PlaylistSchema> {
         return try {
@@ -135,7 +130,6 @@ class PlaylistRepository(private val context: Context) {
     }
 
     // ========== TRACK OPERATIONS ==========
-
     // Создание трека в плейлисте
     fun createTrackInPlaylist(playlistName: String, fileSchema: FileSchema): Result<FileSchema> {
         return try {
@@ -210,7 +204,10 @@ class PlaylistRepository(private val context: Context) {
         return try {
             val list = readAll()
             val playlistIndex = list.indexOfFirst { it.name == playlistName }
+            Log.w("list in json: ", list.toString())
             if (playlistIndex == -1) {
+                Log.w("playlist name: ", playlistName)
+                Log.w("playlist index == -1: ", "failure")
                 return Result.failure(NoSuchElementException("Плейлист с именем '$playlistName' не найден"))
             }
 
@@ -219,13 +216,16 @@ class PlaylistRepository(private val context: Context) {
             val duplicates = tracks.filter { it.uid in existingUids }
 
             if (duplicates.isNotEmpty()) {
+                Log.w("duplicated founded", "failure")
                 return Result.failure(IllegalArgumentException("Найдены дубликаты треков: ${duplicates.map { it.uid }}"))
             }
 
             playlist.content.addAll(tracks)
             writeAll(list)
+            Log.w("writing all", list.toString())
             Result.success(tracks)
         } catch (e: Exception) {
+            Log.e("error updating json", e.toString())
             Result.failure(e)
         }
     }

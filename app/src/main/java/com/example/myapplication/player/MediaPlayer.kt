@@ -3,11 +3,14 @@ package com.example.myapplication.player
 import android.content.Context
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.PowerManager
 import android.util.Log
+import com.example.myapplication.playlist_repository.FileSchema
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import androidx.core.net.toUri
 
 class MediaPlayer(private val context: Context) {
 
@@ -31,20 +34,27 @@ class MediaPlayer(private val context: Context) {
         }
     }
 
-    fun playFile(file: File) {
+    fun playFile(fileSchema: FileSchema) {
         stopOldPlayer()
         this.initMediaPlayer()
         try {
             mediaPlayer = MediaPlayer().apply {
-                setDataSource(file.absolutePath)
+                if (fileSchema.uri == null) {
+                    Log.d(this::class.simpleName, "Аудио файл будет открыт как путь")
+                    setDataSource(fileSchema.absolutePath)
+                }
+                else {
+                    Log.d(this::class.simpleName, "Аудио файл будет открыт как URI")
+                    setDataSource(context, fileSchema.uri.toUri())
+                }
                 setOnPreparedListener {
                     start()
                     _playing.value = true
-                    Log.d("AudioPlayer", "Playing: ${file.name}")
+                    Log.d("AudioPlayer", "Playing: ${fileSchema.fileName}")
                 }
                 setOnCompletionListener {
                     stopOldPlayer()
-                    Log.d("AudioPlayer", "Playback completed: ${file.name}")
+                    Log.d("AudioPlayer", "Playback completed: ${fileSchema.fileName}")
                 }
                 prepareAsync()
             }

@@ -124,7 +124,10 @@ fun PlaylistItem(playlistName: String, fileRepo: FileRepo, navController: NavCon
                     }
 
                     Button(
-                        onClick = { Log.i("Удалить плейлист", "Удалить этот плейлист") },
+                        onClick = {
+                            Log.i("Удалить плейлист", "Удалить этот плейлист")
+                            fileRepo.deletePlaylist(playlistName)
+                        },
                         modifier = Modifier.size(64.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {

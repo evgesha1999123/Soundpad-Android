@@ -58,6 +58,7 @@ import androidx.navigation.NavController
 import com.example.myapplication.fileRepo.FilePickerContract
 import com.example.myapplication.fileRepo.FileRepo
 import com.example.myapplication.player.MediaPlayer
+import com.example.myapplication.playlist_repository.FileSchema
 import com.example.myapplication.recorder.Mp3Recorder
 import com.example.myapplication.recorder.TimerViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -107,7 +108,9 @@ fun HomeScreen(
     FileControls(
         fileRepo,
         { deleteFilesTrigger++ },
-        onDeletingChange = { newValue -> deleting = newValue })
+        onDeletingChange = { newValue -> deleting = newValue },
+        refreshTrigger
+    )
     StopPlayAudioControl(mediaPlayer)
     Timer(mp3Recorder, timerViewModel)
     MenuButton(navController)
@@ -121,7 +124,7 @@ fun PlayButtons(
     deleteFilesTrigger: Int,
     deleteSingleFile: Boolean
 ) {
-    val files = remember { mutableStateListOf<File>() }
+    val files = remember { mutableStateListOf<FileSchema>() }
     val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     val deletedIndex = remember { mutableIntStateOf(-1) }
     val deletedFile = remember { mutableStateOf(File("")) }
@@ -168,11 +171,7 @@ fun PlayButtons(
                         if (!deleteSingleFile) {
                             coroutineScope.launch {
                                 currentPlayingIndex = index
-                                audioPlayer.playFile(
-                                    File(
-                                        fileRepo.getFile(index).toString()
-                                    )
-                                )
+                                audioPlayer.playFile(fileRepo.getFile(index))
                             }
                         } else {
                             deletedIndex.intValue = index
@@ -206,10 +205,13 @@ fun PlayButtons(
 fun FileControls(
     fileRepo: FileRepo,
     onPurgeFiles: () -> Unit,
-    onDeletingChange: (Boolean) -> Unit
+    onDeletingChange: (Boolean) -> Unit,
+    appendFileTrigger: Int
 ) {
     var deleting by remember { mutableStateOf(false) }
     var showPurgeFilesDialog by remember { mutableStateOf(false) }
+    var selectedFiles by remember { mutableStateOf<List<String>>(emptyList()) }
+    var appendFileTrigger by remember { mutableIntStateOf(-1) }
 
     Box(
         modifier = Modifier
@@ -273,7 +275,14 @@ fun FileControls(
             horizontalAlignment = Alignment.Start
         ) {
             PlaylistCreatorButton(fileRepo)
-            FilePickerButton({ Log.i("File picker", "files selected") })
+            FilePickerButton(
+                {
+                    files -> selectedFiles = files
+                    Log.d("selected files:", files.toString())
+                    fileRepo.addTracksToPlaylist(selectedFiles)
+                    appendFileTrigger++
+                }
+            )
         }
     }
     if (showPurgeFilesDialog) {
@@ -285,7 +294,7 @@ fun FileControls(
                 confirmButton = {
                     Button(
                         onClick = {
-                            fileRepo.purgeCurrentDirectory()
+                            fileRepo.purgeDirectory()
                             onPurgeFiles()
                             showPurgeFilesDialog = false
                         },
@@ -323,13 +332,14 @@ fun MicrophoneControls(
                 if (!recording) {
                     recording = true
                     recorder.prepare()
-                    recorder.setOutputFile(
-                        File(
-                            fileRepo.getCurrentDirectory().toString(),
-                            "${System.currentTimeMillis()}.mp3"
-                        ).toString()
-                    )
+                    val outputFile = File(
+                        fileRepo.getCurrentDirectory().toString(),
+                        "${System.currentTimeMillis()}.mp3"
+                    ).toString()
+                    recorder.setOutputFile(outputFile)
                     recorder.start()
+                    val createdSuccess = fileRepo.addTracksToPlaylist(listOf(outputFile))
+                    Log.w("Creating file:", createdSuccess.toString())
                 } else {
                     try {
                         recording = false
@@ -450,9 +460,8 @@ private fun formatTime(millis: Long): String {
 // Добавление файлов в текущий плейлист
 @Composable
 fun FilePickerButton(
-    onFilesSelected: (List<Uri>) -> Unit,
+    onFilesSelected: (List<String>) -> Unit,
     allowedExtensions: List<String> = listOf("mp3", "wav", "aac"),
-    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showDialog by remember { mutableStateOf(false) }
@@ -469,35 +478,23 @@ fun FilePickerButton(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val uris = mutableListOf<Uri>()
+            val uris = mutableListOf<String>()
             result.data?.let { data ->
                 when {
                     data.clipData != null -> {
                         val clipData = data.clipData!!
                         for (i in 0 until clipData.itemCount) {
-                            uris.add(clipData.getItemAt(i).uri)
+                            uris.add(clipData.getItemAt(i).uri.toString())
                         }
                     }
-
                     data.data != null -> {
-                        uris.add(data.data!!)
-                    }
-
-                    else -> {
-
+                        uris.add(data.data!!.toString())
                     }
                 }
             }
 
-            // фильтруем по расширениям, если пользователь выбрал не то
-            val filteredUris = uris.filter { uri ->
-                val ext = context.contentResolver.getType(uri)
-                    ?.substringAfterLast('/')
-                    ?.lowercase() ?: ""
-                allowedExtensions.any { ext.contains(it, ignoreCase = true) }
-            }
+            onFilesSelected(uris)
 
-            onFilesSelected(filteredUris)
         }
     }
 
@@ -599,7 +596,7 @@ fun PlaylistCreatorButton(fileRepo: FileRepo) {
         }
     }
     if (showDialog) {
-        FileCreatorDialog(
+        PlaylistCreatorDialog(
             onDismiss = { showDialog = false },
             onConfirm = {
                 showDialog = false
@@ -610,7 +607,7 @@ fun PlaylistCreatorButton(fileRepo: FileRepo) {
 }
 
 @Composable
-fun FileCreatorDialog(
+fun PlaylistCreatorDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
     fileRepo: FileRepo

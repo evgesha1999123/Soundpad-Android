@@ -16,6 +16,7 @@ data class FileSchema(
     val uid: String,
     val fileName: String,
     val absolutePath: String,
+    val uri: String?,
     val isUserRecord: Boolean,
     val isDeletable: Boolean,
     val created: String

@@ -1,6 +1,8 @@
 package com.example.myapplication.navigation
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.webkit.MimeTypeMap
@@ -58,6 +60,7 @@ import androidx.navigation.NavController
 import com.example.myapplication.fileRepo.FilePickerContract
 import com.example.myapplication.fileRepo.FileRepo
 import com.example.myapplication.player.MediaPlayer
+import com.example.myapplication.playlistCreator.PlaylistCreatorButton
 import com.example.myapplication.playlist_repository.FileSchema
 import com.example.myapplication.recorder.Mp3Recorder
 import com.example.myapplication.recorder.TimerViewModel
@@ -78,6 +81,11 @@ fun HomeScreen(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var deleteFilesTrigger by remember { mutableIntStateOf(0) }
     var deleting by remember { mutableStateOf(false) }
+    var currentPlaylistName by remember { mutableStateOf(fileRepo.getCurrentPlaylistName()) }
+
+    LaunchedEffect(refreshTrigger) {
+        currentPlaylistName = fileRepo.getCurrentPlaylistName()
+    }
 
     Box(
         modifier = Modifier
@@ -85,10 +93,10 @@ fun HomeScreen(
             .fillMaxWidth()
     ) {
         Text(
-            text = "Плейлист: ${fileRepo.getCurrentPlaylistName()}",
+            text = "Плейлист: $currentPlaylistName",
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(x = -(32).dp ,y = 45.dp)
+                .offset(x = -(32).dp, y = 45.dp)
                 .widthIn(max = 200.dp), // Ограничиваем максимальную ширину
             fontSize = 20.sp,
             maxLines = 2, // Максимум 2 строки
@@ -109,7 +117,7 @@ fun HomeScreen(
         fileRepo,
         { deleteFilesTrigger++ },
         onDeletingChange = { newValue -> deleting = newValue },
-        refreshTrigger
+        { refreshTrigger++ }
     )
     StopPlayAudioControl(mediaPlayer)
     Timer(mp3Recorder, timerViewModel)
@@ -133,7 +141,7 @@ fun PlayButtons(
 
     LaunchedEffect(appendFileTrigger, deleteFilesTrigger) {
         files.clear()
-        files.addAll(fileRepo.listFiles())
+        files.addAll(fileRepo.listFileSchemas())
     }
 
     LaunchedEffect(deletedIndex.intValue) {
@@ -206,12 +214,11 @@ fun FileControls(
     fileRepo: FileRepo,
     onPurgeFiles: () -> Unit,
     onDeletingChange: (Boolean) -> Unit,
-    appendFileTrigger: Int
+    onRefreshTrigger: () -> Unit
 ) {
     var deleting by remember { mutableStateOf(false) }
     var showPurgeFilesDialog by remember { mutableStateOf(false) }
     var selectedFiles by remember { mutableStateOf<List<String>>(emptyList()) }
-    var appendFileTrigger by remember { mutableIntStateOf(-1) }
 
     Box(
         modifier = Modifier
@@ -274,13 +281,20 @@ fun FileControls(
             modifier = Modifier.align(Alignment.BottomStart),
             horizontalAlignment = Alignment.Start
         ) {
-            PlaylistCreatorButton(fileRepo)
+            PlaylistCreatorButton(
+                fileRepo = fileRepo,
+                modifier = Modifier
+                    .size(50.dp)
+                    .aspectRatio(1f)
+                    .offset(x = 77.dp, y = -(8.dp)),
+                onRefreshTrigger = onRefreshTrigger,
+            )
             FilePickerButton(
                 {
                     files -> selectedFiles = files
                     Log.d("selected files:", files.toString())
                     fileRepo.addTracksToPlaylist(selectedFiles)
-                    appendFileTrigger++
+                    onRefreshTrigger()
                 }
             )
         }
@@ -458,9 +472,19 @@ private fun formatTime(millis: Long): String {
 }
 
 // Добавление файлов в текущий плейлист
+
+private fun savePersistentUriPermission(context: Context, uri: Uri) {
+    try {
+        val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+        Log.i("FilePicker", "Persistent permission granted for: $uri")
+    } catch (e: SecurityException) {
+        Log.e("FilePicker", "Failed to take persistent permission: ${e.message}")
+    }
+}
 @Composable
 fun FilePickerButton(
-    onFilesSelected: (List<String>) -> Unit,
+    onFilesSelected: (List<String>) -> Unit, // Изменил на List<Uri> вместо List<String>
     allowedExtensions: List<String> = listOf("mp3", "wav", "aac"),
 ) {
     val context = LocalContext.current
@@ -478,39 +502,46 @@ fun FilePickerButton(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val uris = mutableListOf<String>()
-            result.data?.let { data ->
-                when {
-                    data.clipData != null -> {
-                        val clipData = data.clipData!!
-                        for (i in 0 until clipData.itemCount) {
-                            uris.add(clipData.getItemAt(i).uri.toString())
-                        }
-                    }
-                    data.data != null -> {
-                        uris.add(data.data!!.toString())
+            result.data?.let { intent ->
+                val uris = mutableListOf<String>()
+
+                // Обрабатываем single file
+                intent.data?.let { uri ->
+                    savePersistentUriPermission(context, uri)
+                    uris.add(uri.toString())
+                }
+
+                // Обрабатываем multiple files
+                intent.clipData?.let { clipData ->
+                    for (i in 0 until clipData.itemCount) {
+                        val uri = clipData.getItemAt(i).uri
+                        savePersistentUriPermission(context, uri)
+                        uris.add(uri.toString())
                     }
                 }
+
+                // Передаем выбранные URI
+                if (uris.isNotEmpty()) {
+                    onFilesSelected(uris)
+                }
             }
-
-            onFilesSelected(uris)
-
         }
     }
 
     // Кнопка, открывающая диалог
-    Box() {
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .offset(x = 77.dp)
+    ) {
         Button(
             onClick = { showDialog = true },
             modifier = Modifier
-                .align(alignment = Alignment.BottomStart)
-                .size(50.dp)
-                .aspectRatio(1f)
-                .offset(x = 77.dp),
+                .size(50.dp),
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(0.dp)
         ) {
-            Text("\uD83D\uDCC2", fontSize = 32.sp)
+            Text("📁", fontSize = 32.sp)
         }
     }
 
@@ -520,9 +551,7 @@ fun FilePickerButton(
             onDismiss = { showDialog = false },
             onConfirm = {
                 showDialog = false
-                // Используем твой контракт
-                val intent =
-                    FilePickerContract.createPickMultipleFilesIntent(*mimeTypes.toTypedArray())
+                val intent = FilePickerContract.createPickMultipleFilesIntent(*mimeTypes.toTypedArray())
                 filePickerLauncher.launch(intent)
             },
             allowedExtensions = allowedExtensions
@@ -570,102 +599,6 @@ fun FilePickerDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = onConfirm) {
                         Text("Выбрать")
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Создание нового плейлиста
-@Composable
-fun PlaylistCreatorButton(fileRepo: FileRepo) {
-    var showDialog by remember { mutableStateOf(false) }
-    Box() {
-        Button(
-            onClick = { showDialog = true },
-            modifier = Modifier
-                .align(alignment = Alignment.BottomStart)
-                .size(50.dp)
-                .aspectRatio(1f)
-                .offset(x = 77.dp, y = -(8.dp)),
-            shape = RoundedCornerShape(8.dp),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text("➕", fontSize = 32.sp)
-        }
-    }
-    if (showDialog) {
-        PlaylistCreatorDialog(
-            onDismiss = { showDialog = false },
-            onConfirm = {
-                showDialog = false
-            },
-            fileRepo
-        )
-    }
-}
-
-@Composable
-fun PlaylistCreatorDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-    fileRepo: FileRepo
-) {
-    var playlistName by remember { mutableStateOf("") }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            tonalElevation = 6.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Создание плейлиста",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Введите название для нового плейлиста",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Поле ввода для названия плейлиста
-                OutlinedTextField(
-                    value = playlistName,
-                    onValueChange = { playlistName = it },
-                    label = { Text("Название плейлиста") },
-                    placeholder = { Text("Мой плейлист") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Отмена")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            Log.i("Создание плейлиста", "Создан плейлист: $playlistName")
-                            fileRepo.createPlaylist(playlistName)
-                            onConfirm(playlistName)
-                        },
-                        enabled = playlistName.isNotBlank()
-                    ) {
-                        Text("Создать")
                     }
                 }
             }

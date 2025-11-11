@@ -7,8 +7,8 @@ import com.example.myapplication.playlist_repository.PlaylistRepository
 import com.example.myapplication.playlist_repository.PlaylistSchema
 import com.example.myapplication.playlist_repository.SchemaUtils
 import java.io.File
+import androidx.core.net.toUri
 
-// TODO: Нужно синхронизировать операции с PlaylistRepository
 class FileRepo(directoryName: String, private val context: Context) {
     private val baseDirectory = File(context.filesDir.absolutePath)
     private var currentDirectory = File(baseDirectory, directoryName)
@@ -42,7 +42,7 @@ class FileRepo(directoryName: String, private val context: Context) {
         }
     }
 
-    fun listFiles(): MutableList<FileSchema> {
+    fun listFileSchemas(): MutableList<FileSchema> {
         Log.d(this::class.simpleName, "Getting files from '$currentDirectory'")
         val files = mutableListOf<FileSchema>()
         val playlistSchema = playlistRepository.getPlaylistByName(currentDirectory.name)
@@ -53,7 +53,7 @@ class FileRepo(directoryName: String, private val context: Context) {
     }
 
     fun getFile(index: Int): FileSchema {
-        val fileSchema: FileSchema = listFiles()[index]
+        val fileSchema: FileSchema = listFileSchemas()[index]
         Log.d(this::class.simpleName, "Getting file '${fileSchema.fileName}'")
         return fileSchema
     }
@@ -61,7 +61,7 @@ class FileRepo(directoryName: String, private val context: Context) {
 
     fun deleteFile(fileSchema: FileSchema): Boolean {
         Log.d(this::class.simpleName, "Deleting file '${fileSchema.fileName}'")
-        val currentPlaylistName = currentDirectory.toString()
+        val currentPlaylistName = currentDirectory.name
         val playlistSchema = playlistRepository.getPlaylistByName(currentPlaylistName)
         if (playlistSchema != null) {
             for (track in playlistSchema.content) {
@@ -128,11 +128,12 @@ class FileRepo(directoryName: String, private val context: Context) {
 
     fun deletePlaylist(name: String): Boolean {
         if (name != "records") {
-            this.purgeDirectory(name)
+            val directory = File(baseDirectory, name)
+            val successDeletedDirectory = directory.deleteRecursively()
             val result = playlistRepository.deletePlaylistByName(name)
-            return result.isSuccess
+            return result.isSuccess && successDeletedDirectory
         }
-        return false
+        return purgeDirectory(name)
     }
 
     fun getCurrentPlaylistName(): String {
@@ -146,7 +147,7 @@ class FileRepo(directoryName: String, private val context: Context) {
             fileSchemas.add(
                 FileSchema(
                     uid = schemaUtils.generateUid(),
-                    fileName = File(file).name,
+                    fileName = if (!isOuterFile) File(file).name else schemaUtils.getFileNameFromUri(context, file.toUri()),
                     absolutePath = if (!isOuterFile) file else "",
                     uri = if (isOuterFile) file else null,
                     isUserRecord = !isOuterFile,

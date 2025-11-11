@@ -178,9 +178,11 @@ class PlaylistRepository(private val context: Context) {
     // Удаление трека из плейлиста
     fun deleteTrackFromPlaylist(playlistName: String, trackUid: String): Result<Boolean> {
         return try {
+            Log.i(this::class.simpleName, "Удаление файла $trackUid из плейлиста $playlistName")
             val list = readAll()
             val playlistIndex = list.indexOfFirst { it.name == playlistName }
             if (playlistIndex == -1) {
+                Log.i(this::class.simpleName, "$playlistName не существует")
                 return Result.failure(NoSuchElementException("Плейлист с именем '$playlistName' не найден"))
             }
 
@@ -189,12 +191,14 @@ class PlaylistRepository(private val context: Context) {
             playlist.content.removeAll { it.uid == trackUid }
 
             if (playlist.content.size == initialSize) {
+                Log.i(this::class.simpleName, "Трек с UID '$trackUid' не найден в плейлисте")
                 return Result.failure(NoSuchElementException("Трек с UID '$trackUid' не найден в плейлисте"))
             }
 
             writeAll(list)
             Result.success(true)
         } catch (e: Exception) {
+            Log.e(this::class.simpleName, e.toString())
             Result.failure(e)
         }
     }

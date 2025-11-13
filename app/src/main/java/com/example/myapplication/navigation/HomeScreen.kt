@@ -110,7 +110,8 @@ fun HomeScreen(
         appendFileTrigger = refreshTrigger,
         deleteFilesTrigger = deleteFilesTrigger,
         deleteSingleFile = deleting,
-        fileRepo = fileRepo
+        fileRepo = fileRepo,
+        playlistName = currentPlaylistName
     )
     MicrophoneControls(mp3Recorder, fileRepo, { refreshTrigger++ })
     FileControls(
@@ -126,11 +127,12 @@ fun HomeScreen(
 
 @Composable
 fun PlayButtons(
-    audioPlayer: com.example.myapplication.player.MediaPlayer,
+    audioPlayer: MediaPlayer,
     fileRepo: FileRepo,
     appendFileTrigger: Int,
     deleteFilesTrigger: Int,
-    deleteSingleFile: Boolean
+    deleteSingleFile: Boolean,
+    playlistName: String
 ) {
     val files = remember { mutableStateListOf<FileSchema>() }
     val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -139,9 +141,9 @@ fun PlayButtons(
     val playing = audioPlayer.playing.collectAsState()
     var currentPlayingIndex by remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(appendFileTrigger, deleteFilesTrigger) {
+    LaunchedEffect(appendFileTrigger, deleteFilesTrigger, playlistName) {
         files.clear()
-        files.addAll(fileRepo.listFileSchemas())
+        files.addAll(fileRepo.listFileSchemas(playlistName))
     }
 
     LaunchedEffect(deletedIndex.intValue) {
@@ -173,13 +175,12 @@ fun PlayButtons(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
             items(files.size) { index ->
-                val file = files[index]
                 Button(
                     onClick = {
                         if (!deleteSingleFile) {
                             coroutineScope.launch {
                                 currentPlayingIndex = index
-                                audioPlayer.playFile(fileRepo.getFile(index))
+                                audioPlayer.playFile(fileRepo.getFile(index, playlistName))
                             }
                         } else {
                             deletedIndex.intValue = index
@@ -287,7 +288,7 @@ fun FileControls(
                     .size(50.dp)
                     .aspectRatio(1f)
                     .offset(x = 77.dp, y = -(8.dp)),
-                onRefreshTrigger = onRefreshTrigger,
+                onRefreshTrigger = onRefreshTrigger
             )
             FilePickerButton(
                 {

@@ -7,12 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -35,7 +32,11 @@ import com.example.myapplication.fileRepo.FileRepo
 
 // Создание нового плейлиста
 @Composable
-fun PlaylistCreatorButton(fileRepo: FileRepo, modifier: Modifier, onRefreshTrigger: () -> Unit) {
+fun PlaylistCreatorButton(
+    fileRepo: FileRepo,
+    modifier: Modifier,
+    onRefreshTrigger: () -> Unit
+) {
     var showDialog by remember { mutableStateOf(false) }
     Box() {
         Button(
@@ -54,7 +55,7 @@ fun PlaylistCreatorButton(fileRepo: FileRepo, modifier: Modifier, onRefreshTrigg
                 showDialog = false
                 onRefreshTrigger()
             },
-            fileRepo
+            fileRepo,
         )
     }
 }

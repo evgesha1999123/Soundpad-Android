@@ -42,19 +42,19 @@ class FileRepo(directoryName: String, private val context: Context) {
         }
     }
 
-    fun listFileSchemas(): MutableList<FileSchema> {
-        Log.d(this::class.simpleName, "Getting files from '$currentDirectory'")
+    fun listFileSchemas(playlistName: String = "records"): MutableList<FileSchema> {
+        Log.d(this::class.simpleName, "Getting files from '$playlistName'")
         val files = mutableListOf<FileSchema>()
-        val playlistSchema = playlistRepository.getPlaylistByName(currentDirectory.name)
+        val playlistSchema = playlistRepository.getPlaylistByName(playlistName)
         if (playlistSchema != null) {
             return playlistSchema.content
         }
         return files
     }
 
-    fun getFile(index: Int): FileSchema {
-        val fileSchema: FileSchema = listFileSchemas()[index]
-        Log.d(this::class.simpleName, "Getting file '${fileSchema.fileName}'")
+    fun getFile(index: Int, playlistName: String = "records"): FileSchema {
+        val fileSchema: FileSchema = listFileSchemas(playlistName)[index]
+        Log.d(this::class.simpleName, "Getting file '${fileSchema.absolutePath}'")
         return fileSchema
     }
 

@@ -139,7 +139,7 @@ fun PlaylistItem(
         shape = RoundedCornerShape(8.dp),
         onClick = {
             fileRepo.setDirectory(playlistName)
-            fileRepo.listFileSchemas()
+            fileRepo.listFileSchemas(playlistName)
             navController.navigate(Screen.HOME.route) {
                 popUpTo(Screen.HOME.route) { inclusive = true }
             }

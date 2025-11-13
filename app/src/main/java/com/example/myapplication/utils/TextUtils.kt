@@ -10,7 +10,7 @@ class TextUtils {
         }
 
         val userRecordSchemas = mutableListOf<String>()
-        val allFileNames = fileRepo.listFileSchemas()
+        val allFileNames = fileRepo.listFileSchemas(playlistName)
 
         for (file in allFileNames) {
             if (file.isUserRecord) {

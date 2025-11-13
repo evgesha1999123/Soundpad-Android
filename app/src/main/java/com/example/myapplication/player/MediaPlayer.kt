@@ -3,17 +3,14 @@ package com.example.myapplication.player
 import android.content.Context
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.net.Uri
 import android.os.PowerManager
 import android.util.Log
+import androidx.core.net.toUri
 import com.example.myapplication.playlist_repository.FileSchema
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.io.File
-import androidx.core.net.toUri
 
 class MediaPlayer(private val context: Context) {
-
     private var mediaPlayer: MediaPlayer? = null
     private var _playing = MutableStateFlow(false)
     val playing = _playing.asStateFlow()
@@ -35,26 +32,38 @@ class MediaPlayer(private val context: Context) {
     }
 
     fun playFile(fileSchema: FileSchema) {
-        stopOldPlayer()
+        var isRestart = false
+        if (_playing.value) isRestart = true
+        stopOldPlayer(isRestart)
         this.initMediaPlayer()
         try {
             mediaPlayer = MediaPlayer().apply {
                 if (fileSchema.uri == null) {
-                    Log.d(this::class.simpleName, "Аудио файл будет открыт как путь")
+                    Log.d(this::class.simpleName, "Будет считан путь к аудиофайлу")
                     setDataSource(fileSchema.absolutePath)
                 }
                 else {
-                    Log.d(this::class.simpleName, "Аудио файл будет открыт как URI")
+                    Log.d(this::class.simpleName, "Будет считан URI аудиофайла")
                     setDataSource(context, fileSchema.uri.toUri())
                 }
                 setOnPreparedListener {
                     start()
                     _playing.value = true
-                    Log.d("AudioPlayer", "Playing: ${fileSchema.fileName}")
+                    if (fileSchema.uri != null) {
+                        Log.d("AudioPlayer", "Playing: ${fileSchema.uri}")
+                    }
+                    else {
+                        Log.d("AudioPlayer", "Playing: ${fileSchema.absolutePath}")
+                    }
                 }
                 setOnCompletionListener {
-                    stopOldPlayer()
-                    Log.d("AudioPlayer", "Playback completed: ${fileSchema.fileName}")
+                    stopOldPlayer(false)
+                    if (fileSchema.uri != null) {
+                        Log.d("AudioPlayer", "Playing: ${fileSchema.uri}")
+                    }
+                    else {
+                        Log.d("AudioPlayer", "Playback completed: ${fileSchema.absolutePath}")
+                    }
                 }
                 prepareAsync()
             }
@@ -64,7 +73,7 @@ class MediaPlayer(private val context: Context) {
         }
     }
 
-    private fun stopOldPlayer() {
+    private fun stopOldPlayer(isRestart: Boolean) {
         mediaPlayer?.apply {
             try {
                 stop()
@@ -75,13 +84,11 @@ class MediaPlayer(private val context: Context) {
             }
         }
         mediaPlayer = null
-        _playing.value = false
+        _playing.value = isRestart
         Log.d("AudioPlayer", "Stopped player")
     }
 
     fun stop() {
-        stopOldPlayer()
+        stopOldPlayer(false)
     }
-
-    fun isPlaying(): Boolean = _playing.value
 }

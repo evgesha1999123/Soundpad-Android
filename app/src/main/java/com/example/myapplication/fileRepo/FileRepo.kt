@@ -61,24 +61,26 @@ class FileRepo(directoryName: String, private val context: Context) {
 
     fun deleteFile(fileSchema: FileSchema): Boolean {
         Log.d(this::class.simpleName, "Deleting file '${fileSchema.fileName}'")
+        Log.d(this::class.simpleName, "Deletable? '${fileSchema.isDeletable}'")
         val currentPlaylistName = currentDirectory.name
-        val playlistSchema = playlistRepository.getPlaylistByName(currentPlaylistName)
-        if (playlistSchema != null) {
-            for (track in playlistSchema.content) {
-                if (track.absolutePath == fileSchema.absolutePath) {
-                    val trackUid = track.uid
-                    val result = playlistRepository.deleteTrackFromPlaylist(currentPlaylistName, trackUid = trackUid)
-                    if (track.isDeletable) {
-                        Log.i(this::class.simpleName, "Удаление файла созданного пользователем: ${fileSchema.fileName}")
-                        return (File(fileSchema.absolutePath).delete()) && (result.isSuccess)
-                    }
-                    Log.i(this::class.simpleName, "Удаление стороннего файла из json: ${fileSchema.fileName}")
-                    return result.isSuccess
-                }
+        Log.d(this::class.simpleName, "file schema: $fileSchema")
+        Log.d(this::class.simpleName, "playlist schema not null")
+        val trackUid = fileSchema.uid
+        val result = playlistRepository.deleteTrackFromPlaylist(currentPlaylistName, trackUid = trackUid)
+        Log.d(this::class.simpleName, "result of playlist repos: $result")
+        try {
+            if (fileSchema.isDeletable) {
+                Log.i(this::class.simpleName, "deletable file")
+                Log.i(this::class.simpleName, "Удаление файла созданного пользователем: ${File(fileSchema.absolutePath)}")
+                return (File(fileSchema.absolutePath).delete()) && (result.isSuccess)
             }
+            Log.i(this::class.simpleName, "Удаление стороннего файла из json: ${fileSchema.fileName}")
+            return result.isSuccess
+        } catch (err: Exception) {
+            Log.e(this::class.simpleName, "Удаление провалено для ${fileSchema.fileName}")
+            Log.e(this::class.simpleName, err.toString())
+            return false
         }
-        Log.e(this::class.simpleName, "Удаление провалено для ${fileSchema.fileName}")
-        return false
     }
 
     fun purgeDirectory(playlistName: String = currentDirectory.name.toString()): Boolean {
@@ -86,10 +88,11 @@ class FileRepo(directoryName: String, private val context: Context) {
         if (File(baseDirectory, playlistName).exists()) {
             val trackUids = mutableListOf<String>()
             val playlistSchema = playlistRepository.getPlaylistByName(playlistName)
-
+            Log.i(this::class.simpleName, "path: ${File(baseDirectory, playlistName)}")
             if (playlistSchema != null) {
                 if (playlistSchema.content.isNotEmpty()) {
                     for (file in playlistSchema.content) {
+                        Log.i(this::class.simpleName, file.toString())
                         trackUids.add(file.uid)
                         if (file.isDeletable) {
                             // Сначала удаляю те, которые были созданы пользователем

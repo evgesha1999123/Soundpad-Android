@@ -153,7 +153,6 @@ fun PlayButtons(
     LaunchedEffect(deletedIndex.intValue) {
         if (deleteSingleFile && deletedIndex.intValue >= 0 && deletedIndex.intValue < files.size) {
             val fileToRemove = fileRepo.getFileSchema(deletedIndex.intValue, playlistName)
-            Log.i("Play Buttons Launched effect", "playlist name: $playlistName")
             // Сначала удаляем из репозитория
             val success = fileRepo.deleteFile(fileToRemove)
             if (success) {
@@ -207,9 +206,9 @@ fun PlayButtons(
                         }
                     )
                 ) {
-                    Log.i("Play button", "index: $index")
                     Text(
-                        text = textUtils.getPlayButtonIcon(fileSchema)
+                        text = textUtils.getPlayButtonIcon(fileSchema),
+                        fontSize = textUtils.defineIconSize(fileSchema).sp,
                     )
                 }
             }
@@ -493,7 +492,7 @@ private fun savePersistentUriPermission(context: Context, uri: Uri) {
 @Composable
 fun FilePickerButton(
     onFilesSelected: (List<String>) -> Unit, // Изменил на List<Uri> вместо List<String>
-    allowedExtensions: List<String> = listOf("mp3", "wav", "aac"),
+    allowedExtensions: List<String> = listOf("mp3", "flac", "ogg", "opus", "wav"),
 ) {
     val context = LocalContext.current
     var showDialog by remember { mutableStateOf(false) }
@@ -584,7 +583,7 @@ fun FilePickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Выбор файлов",
+                    text = "Импорт файлов в плейлист",
                     style = MaterialTheme.typography.titleLarge
                 )
 

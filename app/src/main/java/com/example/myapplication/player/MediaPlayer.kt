@@ -50,26 +50,26 @@ class MediaPlayer(private val context: Context) {
                     start()
                     _playing.value = true
                     if (fileSchema.uri != null) {
-                        Log.d("AudioPlayer", "Playing: ${fileSchema.uri}")
+                        Log.d("MediaPlayer", "Playing: ${fileSchema.uri}")
                     }
                     else {
-                        Log.d("AudioPlayer", "Playing: ${fileSchema.absolutePath}")
+                        Log.d("MediaPlayer", "Playing: ${fileSchema.absolutePath}")
                     }
                 }
                 setOnCompletionListener {
                     stopOldPlayer(false)
                     if (fileSchema.uri != null) {
-                        Log.d("AudioPlayer", "Playing: ${fileSchema.uri}")
+                        Log.d("MediaPlayer", "Playing: ${fileSchema.uri}")
                     }
                     else {
-                        Log.d("AudioPlayer", "Playback completed: ${fileSchema.absolutePath}")
+                        Log.d("MediaPlayer", "Playback completed: ${fileSchema.absolutePath}")
                     }
                 }
                 prepareAsync()
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            Log.e("AudioPlayer", "Failed to play MP3: ${e.message}")
+            Log.e("MediaPlayer", "Failed to play MP3: ${e.message}")
         }
     }
 
@@ -78,14 +78,14 @@ class MediaPlayer(private val context: Context) {
             try {
                 stop()
             } catch (e: IllegalStateException) {
-                Log.w("AudioPlayer", "Stop called in invalid state")
+                Log.w("MediaPlayer", "Stop called in invalid state")
             } finally {
                 release()
             }
         }
         mediaPlayer = null
         _playing.value = isRestart
-        Log.d("AudioPlayer", "Stopped player")
+        Log.d("MediaPlayer", "Stopped player")
     }
 
     fun stop() {

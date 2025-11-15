@@ -1,9 +1,6 @@
 package com.example.myapplication.fileRepo
 
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.util.Log
 
 class FilePickerContract {
     companion object {

@@ -47,12 +47,19 @@ class TextUtils {
         return File(fileSchema.fileName).extension
     }
 
+    fun defineIconSize(fileSchema: FileSchema): Int {
+        if (fileSchema.uri == null) {
+            return 11
+        }
+        return 16
+    }
+
     fun getPlayButtonIcon(fileSchema: FileSchema?): String {
         if (fileSchema != null) {
             if (fileSchema.uri == null) {
-                return "•၊၊||၊|။|||| |"
+                return "•၊၊||၊|။၊၊||၊|။"
             }
-            return "\uD83D\uDCC4.${getFileExtension(fileSchema)}"
+            return "\uD83D\uDCC4\n.${getFileExtension(fileSchema)}"
         }
         return ""
     }

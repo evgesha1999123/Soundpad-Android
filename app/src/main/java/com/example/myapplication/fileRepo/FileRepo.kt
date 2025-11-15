@@ -43,10 +43,12 @@ class FileRepo(directoryName: String, private val context: Context) {
     }
 
     fun listFileSchemas(playlistName: String = "records"): MutableList<FileSchema> {
-        Log.d(this::class.simpleName, "Getting files from '$playlistName'")
+        Log.d(this::class.simpleName, "Listing file schemas from playlist: '$playlistName'")
         val files = mutableListOf<FileSchema>()
         val playlistSchema = playlistRepository.getPlaylistByName(playlistName)
+        Log.d(this::class.simpleName, "listFileSchemasGetSchema: $playlistSchema")
         if (playlistSchema != null) {
+            Log.d(this::class.simpleName, "playlistSchema content: $playlistSchema")
             return playlistSchema.content
         }
         return files
@@ -54,7 +56,6 @@ class FileRepo(directoryName: String, private val context: Context) {
 
     fun getFile(index: Int, playlistName: String = "records"): FileSchema {
         val fileSchema: FileSchema = listFileSchemas(playlistName)[index]
-        Log.d(this::class.simpleName, "Getting file '${fileSchema.absolutePath}'")
         return fileSchema
     }
 
@@ -117,7 +118,7 @@ class FileRepo(directoryName: String, private val context: Context) {
         return playlists
     }
 
-    fun createPlaylist(name: String): Boolean {
+    fun createPlaylist(name: String): Result<PlaylistSchema> {
         setDirectory(name)
         val playlistSchema = PlaylistSchema(
             uid = schemaUtils.generateUid(),
@@ -126,7 +127,8 @@ class FileRepo(directoryName: String, private val context: Context) {
             created = schemaUtils.getCurrentDateTime()
         )
         val result = playlistRepository.createPlaylist(playlistSchema)
-        return result.isSuccess
+        Log.i(this::class.simpleName, "Успешно создан? ${result.exceptionOrNull()}")
+        return result
     }
 
     fun deletePlaylist(name: String): Boolean {

@@ -143,12 +143,14 @@ fun PlayButtons(
 
     LaunchedEffect(appendFileTrigger, deleteFilesTrigger, playlistName) {
         files.clear()
+        Log.i("Play Buttons Launched effect", "playlist name: $playlistName")
         files.addAll(fileRepo.listFileSchemas(playlistName))
     }
 
     LaunchedEffect(deletedIndex.intValue) {
         if (deleteSingleFile && deletedIndex.intValue >= 0 && deletedIndex.intValue < files.size) {
             val fileToRemove = fileRepo.getFile(deletedIndex.intValue, playlistName)
+            Log.i("Play Buttons Launched effect", "playlist name: $playlistName")
             // Сначала удаляем из репозитория
             val success = fileRepo.deleteFile(fileToRemove)
             if (success) {
@@ -184,7 +186,7 @@ fun PlayButtons(
                             }
                         } else {
                             deletedIndex.intValue = index
-                            deletedFile.value = File(fileRepo.getFile(index).toString())
+                            deletedFile.value = File(fileRepo.getFile(index, playlistName).toString())
                         }
                     },
                     modifier = Modifier

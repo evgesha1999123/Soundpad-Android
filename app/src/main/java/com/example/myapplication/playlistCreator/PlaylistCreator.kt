@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,10 +38,12 @@ fun PlaylistCreatorButton(
     modifier: Modifier,
     onRefreshTrigger: () -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
+    var showAskDialog by remember { mutableStateOf(false) }
+    var showFailedState by remember { mutableStateOf(false) }
+
     Box() {
         Button(
-            onClick = { showDialog = true },
+            onClick = { showAskDialog = true },
             modifier = modifier,
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(0.dp)
@@ -48,14 +51,21 @@ fun PlaylistCreatorButton(
             Text("➕", fontSize = 32.sp)
         }
     }
-    if (showDialog) {
+    if (showAskDialog) {
         PlaylistCreatorDialog(
-            onDismiss = { showDialog = false },
+            onDismiss = { showAskDialog = false },
             onConfirm = {
-                showDialog = false
+                showAskDialog = false
                 onRefreshTrigger()
             },
             fileRepo,
+            onFailed = { showFailedState = true }
+        )
+    }
+
+    if (showFailedState) {
+        PlaylistCreateFailedDialog(
+            { showFailedState = false }
         )
     }
 }
@@ -64,7 +74,8 @@ fun PlaylistCreatorButton(
 fun PlaylistCreatorDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
-    fileRepo: FileRepo
+    fileRepo: FileRepo,
+    onFailed: () -> Unit
 ) {
     var playlistName by remember { mutableStateOf("") }
 
@@ -114,8 +125,13 @@ fun PlaylistCreatorDialog(
                     Button(
                         onClick = {
                             Log.i("Создание плейлиста", "Создан плейлист: $playlistName")
-                            fileRepo.createPlaylist(playlistName)
-                            onConfirm(playlistName)
+                            val result = fileRepo.createPlaylist(playlistName)
+                            if (result.exceptionOrNull().toString().contains("уже существует")) {
+                                onFailed()
+                            }
+                            else {
+                                onConfirm(playlistName)
+                            }
                         },
                         enabled = playlistName.isNotBlank()
                     ) {
@@ -125,4 +141,18 @@ fun PlaylistCreatorDialog(
             }
         }
     }
+}
+
+@Composable
+fun PlaylistCreateFailedDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Ошибка") },
+        text = { Text("Плейлист с таким именем уже существует.") },
+        confirmButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Понял")
+            }
+        }
+    )
 }

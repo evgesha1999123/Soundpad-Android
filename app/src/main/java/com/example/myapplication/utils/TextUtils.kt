@@ -1,6 +1,8 @@
 package com.example.myapplication.utils
 
 import com.example.myapplication.fileRepo.FileRepo
+import com.example.myapplication.playlist_repository.FileSchema
+import java.io.File
 
 class TextUtils {
 
@@ -39,5 +41,19 @@ class TextUtils {
                 append("\nИмпортированные аудиофайлы из внешних папок удалены не будут.")
             }
         }
+    }
+
+    private fun getFileExtension(fileSchema: FileSchema): String {
+        return File(fileSchema.fileName).extension
+    }
+
+    fun getPlayButtonIcon(fileSchema: FileSchema?): String {
+        if (fileSchema != null) {
+            if (fileSchema.uri == null) {
+                return "•၊၊||၊|။|||| |"
+            }
+            return "\uD83D\uDCC4.${getFileExtension(fileSchema)}"
+        }
+        return ""
     }
 }

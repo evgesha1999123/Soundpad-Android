@@ -54,9 +54,21 @@ class FileRepo(directoryName: String, private val context: Context) {
         return files
     }
 
-    fun getFile(index: Int, playlistName: String = "records"): FileSchema {
-        val fileSchema: FileSchema = listFileSchemas(playlistName)[index]
-        return fileSchema
+    fun getFileSchema(index: Int, playlistName: String = "records"): FileSchema {
+        val fileSchemas: MutableList<FileSchema> = listFileSchemas(playlistName)
+        if (fileSchemas.isNotEmpty()) {
+            val fileSchema: FileSchema = fileSchemas[index]
+            return fileSchema
+        }
+        return FileSchema(
+            uid = schemaUtils.generateUid(),
+            fileName = "empty",
+            absolutePath = "empty",
+            uri = null,
+            isUserRecord = false,
+            isDeletable = false,
+            created = schemaUtils.getCurrentDateTime()
+        )
     }
 
 

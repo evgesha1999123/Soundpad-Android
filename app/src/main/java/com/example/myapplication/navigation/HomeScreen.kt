@@ -35,7 +35,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +63,7 @@ import com.example.myapplication.playlistCreator.PlaylistCreatorButton
 import com.example.myapplication.playlist_repository.FileSchema
 import com.example.myapplication.recorder.Mp3Recorder
 import com.example.myapplication.recorder.TimerViewModel
+import com.example.myapplication.utils.TextUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -74,6 +74,7 @@ import java.io.File
 fun HomeScreen(
     mp3Recorder: Mp3Recorder,
     fileRepo: FileRepo,
+    textUtils: TextUtils,
     mediaPlayer: MediaPlayer,
     timerViewModel: TimerViewModel,
     navController: NavController
@@ -111,6 +112,7 @@ fun HomeScreen(
         deleteFilesTrigger = deleteFilesTrigger,
         deleteSingleFile = deleting,
         fileRepo = fileRepo,
+        textUtils = textUtils,
         playlistName = currentPlaylistName
     )
     MicrophoneControls(mp3Recorder, fileRepo, { refreshTrigger++ })
@@ -129,6 +131,7 @@ fun HomeScreen(
 fun PlayButtons(
     audioPlayer: MediaPlayer,
     fileRepo: FileRepo,
+    textUtils: TextUtils,
     appendFileTrigger: Int,
     deleteFilesTrigger: Int,
     deleteSingleFile: Boolean,
@@ -149,7 +152,7 @@ fun PlayButtons(
 
     LaunchedEffect(deletedIndex.intValue) {
         if (deleteSingleFile && deletedIndex.intValue >= 0 && deletedIndex.intValue < files.size) {
-            val fileToRemove = fileRepo.getFile(deletedIndex.intValue, playlistName)
+            val fileToRemove = fileRepo.getFileSchema(deletedIndex.intValue, playlistName)
             Log.i("Play Buttons Launched effect", "playlist name: $playlistName")
             // Сначала удаляем из репозитория
             val success = fileRepo.deleteFile(fileToRemove)
@@ -177,16 +180,17 @@ fun PlayButtons(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
             items(files.size) { index ->
+                val fileSchema = fileRepo.getFileSchema(index, playlistName)
                 Button(
                     onClick = {
                         if (!deleteSingleFile) {
                             coroutineScope.launch {
                                 currentPlayingIndex = index
-                                audioPlayer.playFile(fileRepo.getFile(index, playlistName))
+                                audioPlayer.playFile(fileSchema)
                             }
                         } else {
                             deletedIndex.intValue = index
-                            deletedFile.value = File(fileRepo.getFile(index, playlistName).toString())
+                            deletedFile.value = File(fileSchema.toString())
                         }
                     },
                     modifier = Modifier
@@ -203,8 +207,9 @@ fun PlayButtons(
                         }
                     )
                 ) {
+                    Log.i("Play button", "index: $index")
                     Text(
-                        text = ""
+                        text = textUtils.getPlayButtonIcon(fileSchema)
                     )
                 }
             }

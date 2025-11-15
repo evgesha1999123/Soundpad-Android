@@ -20,6 +20,7 @@ import com.example.myapplication.navigation.Screen
 import com.example.myapplication.player.MediaPlayer
 import com.example.myapplication.recorder.Mp3Recorder
 import com.example.myapplication.recorder.TimerViewModel
+import com.example.myapplication.utils.TextUtils
 
 class MainActivity : ComponentActivity() {
 
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
         val fileRepo = FileRepo("records", this)
         val mediaPlayer = MediaPlayer(context = this)
         val timerViewModel = TimerViewModel()
+        val textUtils = TextUtils()
 
         mediaPlayer.initMediaPlayer()
 
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 mp3Recorder = mp3Recorder,
                                 fileRepo = fileRepo,
+                                textUtils = textUtils,
                                 mediaPlayer = mediaPlayer,
                                 timerViewModel = timerViewModel,
                                 navController = navController

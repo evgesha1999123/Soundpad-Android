@@ -226,7 +226,6 @@ class PlaylistRepository(private val context: Context) {
 
             playlist.content.addAll(tracks)
             writeAll(list)
-            Log.w("writing all", list.toString())
             Result.success(tracks)
         } catch (e: Exception) {
             Log.e("error updating json", e.toString())

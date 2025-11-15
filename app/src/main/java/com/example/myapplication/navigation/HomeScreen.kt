@@ -148,7 +148,7 @@ fun PlayButtons(
 
     LaunchedEffect(deletedIndex.intValue) {
         if (deleteSingleFile && deletedIndex.intValue >= 0 && deletedIndex.intValue < files.size) {
-            val fileToRemove = fileRepo.getFile(deletedIndex.intValue)
+            val fileToRemove = fileRepo.getFile(deletedIndex.intValue, playlistName)
             // Сначала удаляем из репозитория
             val success = fileRepo.deleteFile(fileToRemove)
             if (success) {

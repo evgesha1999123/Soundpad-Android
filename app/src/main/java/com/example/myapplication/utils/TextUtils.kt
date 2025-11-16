@@ -1,11 +1,11 @@
 package com.example.myapplication.utils
 
 import com.example.myapplication.fileRepo.FileRepo
+import com.example.myapplication.navigation.Status
 import com.example.myapplication.playlist_repository.FileSchema
 import java.io.File
 
 class TextUtils {
-
     private fun isPlaylistProtected(playlistName: String): Boolean {
         return playlistName == "records"
     }
@@ -62,5 +62,25 @@ class TextUtils {
             return "\uD83D\uDCC4\n.${getFileExtension(fileSchema)}"
         }
         return ""
+    }
+
+    fun formatTime(millis: Long): String {
+        val seconds = (millis / 1000) % 60
+        val minutes = (millis / (1000 * 60)) % 60
+        return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    fun getStatus(status: Status): String {
+        return when (status){
+            Status.PLAYING -> "Играю"
+            Status.RECORDING -> "Записываю"
+            Status.IDLE -> ""
+        }
+    }
+
+    fun getTrackTimeLabel(currentTimeMillis: Long, trackDuration: Int): String {
+        val currentTimeFormatted = formatTime(currentTimeMillis)
+        val trackDurationFormatted = formatTime(trackDuration.toLong())
+        return "$currentTimeFormatted / $trackDurationFormatted"
     }
 }

@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +63,9 @@ import com.example.myapplication.player.MediaPlayer
 import com.example.myapplication.playlistCreator.PlaylistCreatorButton
 import com.example.myapplication.playlist_repository.FileSchema
 import com.example.myapplication.recorder.Mp3Recorder
+import com.example.myapplication.recorder.RecorderService
 import com.example.myapplication.recorder.TimerViewModel
+import com.example.myapplication.statusManager.StatusManager
 import com.example.myapplication.utils.TextUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,10 +82,13 @@ fun HomeScreen(
     timerViewModel: TimerViewModel,
     navController: NavController
 ) {
+    val scope = rememberCoroutineScope()
+    val recorderService = RecorderService(recorder = mp3Recorder, fileRepo = fileRepo)
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var deleteFilesTrigger by remember { mutableIntStateOf(0) }
     var deleting by remember { mutableStateOf(false) }
     var currentPlaylistName by remember { mutableStateOf(fileRepo.getCurrentPlaylistName()) }
+    val statusManager = StatusManager(recorderService, mediaPlayer, scope)
 
     LaunchedEffect(refreshTrigger) {
         currentPlaylistName = fileRepo.getCurrentPlaylistName()
@@ -113,9 +119,10 @@ fun HomeScreen(
         deleteSingleFile = deleting,
         fileRepo = fileRepo,
         textUtils = textUtils,
-        playlistName = currentPlaylistName
+        playlistName = currentPlaylistName,
+        statusManager = statusManager
     )
-    MicrophoneControls(mp3Recorder, fileRepo, { refreshTrigger++ })
+    MicrophoneControls(statusManager = statusManager, recorderService, { refreshTrigger++ })
     FileControls(
         fileRepo,
         { deleteFilesTrigger++ },
@@ -123,7 +130,7 @@ fun HomeScreen(
         { refreshTrigger++ }
     )
     StopPlayAudioControl(mediaPlayer)
-    Timer(mp3Recorder, timerViewModel)
+    StatusBar(mediaPlayer, textUtils, statusManager, timerViewModel)
     MenuButton(navController)
 }
 
@@ -132,6 +139,7 @@ fun PlayButtons(
     audioPlayer: MediaPlayer,
     fileRepo: FileRepo,
     textUtils: TextUtils,
+    statusManager: StatusManager,
     appendFileTrigger: Int,
     deleteFilesTrigger: Int,
     deleteSingleFile: Boolean,
@@ -182,14 +190,16 @@ fun PlayButtons(
                 val fileSchema = fileRepo.getFileSchema(index, playlistName)
                 Button(
                     onClick = {
-                        if (!deleteSingleFile) {
-                            coroutineScope.launch {
-                                currentPlayingIndex = index
-                                audioPlayer.playFile(fileSchema)
+                        if (statusManager.getStatus() != Status.RECORDING) {
+                            if (!deleteSingleFile) {
+                                coroutineScope.launch {
+                                    currentPlayingIndex = index
+                                    audioPlayer.playFile(fileSchema)
+                                }
+                            } else {
+                                deletedIndex.intValue = index
+                                deletedFile.value = File(fileSchema.toString())
                             }
-                        } else {
-                            deletedIndex.intValue = index
-                            deletedFile.value = File(fileSchema.toString())
                         }
                     },
                     modifier = Modifier
@@ -337,8 +347,8 @@ fun FileControls(
 
 @Composable
 fun MicrophoneControls(
-    recorder: Mp3Recorder,
-    fileRepo: FileRepo,
+    statusManager: StatusManager,
+    recorderService: RecorderService,
     onRecordStopped: () -> Unit = {}
 ) {
     var recording by remember { mutableStateOf(false) }
@@ -350,27 +360,18 @@ fun MicrophoneControls(
     ) {
         Button(
             onClick = {
-                if (!recording) {
-                    recording = true
-                    recorder.prepare()
-                    val outputFile = File(
-                        fileRepo.getCurrentDirectory().toString(),
-                        "${System.currentTimeMillis()}.mp3"
-                    ).toString()
-                    recorder.setOutputFile(outputFile)
-                    recorder.start()
-                    val createdSuccess = fileRepo.addTracksToPlaylist(listOf(outputFile))
-                    Log.w("Creating file:", createdSuccess.toString())
-                } else {
-                    try {
-                        recording = false
-                        recorder.stop()
-                        recorder.release()
-                        onRecordStopped()
-                    } catch (e: Exception) {
-                        Log.e("Error closing recording stream:", e.toString())
+                if (statusManager.getStatus() != Status.PLAYING) {
+                    if (!recording) {
+                        recording = true
+                        recorderService.start()
+                    } else {
+                        try {
+                            recording = false
+                            recorderService.stop(onRecordStopped)
+                        } catch (e: Exception) {
+                            Log.e("Error closing recording stream:", e.toString())
+                        }
                     }
-
                 }
             },
             modifier = Modifier
@@ -417,15 +418,32 @@ fun StopPlayAudioControl(audioPlayer: com.example.myapplication.player.MediaPlay
 }
 
 @Composable
-fun Timer(mp3Recorder: Mp3Recorder, timerViewModel: TimerViewModel) {
-    val recording by mp3Recorder.recording.collectAsState()
-    val timeInMillis by timerViewModel.timeInMillis.collectAsState()
-    val timerLabel = formatTime(timeInMillis)
+fun StatusBar(
+    mediaPlayer: MediaPlayer,
+    textUtils: TextUtils,
+    statusManager: StatusManager,
+    timerViewModel: TimerViewModel
+) {
+    val status by statusManager.status.collectAsState()
+    val currentTimeInMillis by timerViewModel.timeInMillis.collectAsState()
+    val trackDurationInMillis by mediaPlayer.trackDuration.collectAsState()
+    val playEvent by mediaPlayer.playEvent.collectAsState()
 
-    LaunchedEffect(recording) {
-        if (recording) {
+    val recordingTimeLabel = textUtils.formatTime(currentTimeInMillis)
+    val statusLabel = textUtils.getStatus(status)
+    val fileNameLabel = mediaPlayer.currentFile.collectAsState()
+    val playingTimeLabel = textUtils.getTrackTimeLabel(currentTimeInMillis, trackDurationInMillis)
+
+    var timeLabelOffset_x = 74
+    var timeLabelOffset_y = 65
+
+    LaunchedEffect(status, playEvent) {
+        if (status == Status.RECORDING || status == Status.PLAYING) {
+            timerViewModel.stopTimer()
+            timerViewModel.resetTimer()
             timerViewModel.startTimer()
-        } else {
+        }
+        else {
             timerViewModel.stopTimer()
             timerViewModel.resetTimer()
         }
@@ -436,13 +454,34 @@ fun Timer(mp3Recorder: Mp3Recorder, timerViewModel: TimerViewModel) {
             .padding(20.dp)
             .size(120.dp)
     ) {
+        // Status
         Text(
-            text = timerLabel,
+            text = statusLabel,
+            modifier = Modifier
+                .align(alignment = Alignment.BottomStart)
+                .offset(y = -(150.dp))
+        )
+        // FileName
+        Text(
+            text = fileNameLabel.value,
+            modifier = Modifier
+                .align(alignment = Alignment.BottomStart)
+                .offset(x = 70.dp, y = -(150.dp))
+                .widthIn(max = 300.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        // Таймер
+        if (status == Status.PLAYING) {
+            timeLabelOffset_x = 45
+        }
+        Text(
+            text = if (status == Status.PLAYING) {playingTimeLabel} else {recordingTimeLabel},
             modifier = Modifier
                 .size(width = 200.dp, height = 75.dp)
                 .align(alignment = Alignment.BottomCenter)
-                .offset(x = 60.dp, y = -(85.dp)),
-            fontSize = 28.sp
+                .offset(x = timeLabelOffset_x.dp, y = -(timeLabelOffset_y.dp)),
+            fontSize = 18.sp
         )
     }
 }
@@ -472,12 +511,6 @@ fun MenuButton(navController: NavController) {
     }
 }
 
-private fun formatTime(millis: Long): String {
-    val seconds = (millis / 1000) % 60
-    val minutes = (millis / (1000 * 60)) % 60
-    return String.format("%02d:%02d", minutes, seconds)
-}
-
 // Добавление файлов в текущий плейлист
 
 private fun savePersistentUriPermission(context: Context, uri: Uri) {
@@ -491,7 +524,7 @@ private fun savePersistentUriPermission(context: Context, uri: Uri) {
 }
 @Composable
 fun FilePickerButton(
-    onFilesSelected: (List<String>) -> Unit, // Изменил на List<Uri> вместо List<String>
+    onFilesSelected: (List<String>) -> Unit,
     allowedExtensions: List<String> = listOf("mp3", "flac", "ogg", "opus", "wav"),
 ) {
     val context = LocalContext.current

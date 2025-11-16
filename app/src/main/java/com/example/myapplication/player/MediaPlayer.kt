@@ -5,6 +5,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.PowerManager
 import android.util.Log
+import androidx.compose.runtime.collectAsState
 import androidx.core.net.toUri
 import com.example.myapplication.playlist_repository.FileSchema
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,12 @@ class MediaPlayer(private val context: Context) {
     private var mediaPlayer: MediaPlayer? = null
     private var _playing = MutableStateFlow(false)
     val playing = _playing.asStateFlow()
+    private var _currentFileName = MutableStateFlow<String>("")
+    val currentFile = _currentFileName.asStateFlow()
+    private var _trackDuration: MutableStateFlow<Int> = MutableStateFlow<Int>(0)
+    val trackDuration = _trackDuration.asStateFlow()
+    private var _playEvent: MutableStateFlow<Int> = MutableStateFlow<Int>(0)
+    var playEvent = _playEvent.asStateFlow()
     var playOnPreparation = true
 
     fun initMediaPlayer() {
@@ -36,6 +43,10 @@ class MediaPlayer(private val context: Context) {
         if (_playing.value) isRestart = true
         stopOldPlayer(isRestart)
         this.initMediaPlayer()
+
+        _currentFileName.value = fileSchema.fileName
+        _playEvent.value++
+
         try {
             mediaPlayer = MediaPlayer().apply {
                 if (fileSchema.uri == null) {
@@ -49,11 +60,12 @@ class MediaPlayer(private val context: Context) {
                 setOnPreparedListener {
                     start()
                     _playing.value = true
+                    _trackDuration.value = duration
                     if (fileSchema.uri != null) {
-                        Log.d("MediaPlayer", "Playing: ${fileSchema.uri}")
+                        Log.d("MediaPlayer", "Playing: ${fileSchema.uri}; duration: $duration")
                     }
                     else {
-                        Log.d("MediaPlayer", "Playing: ${fileSchema.absolutePath}")
+                        Log.d("MediaPlayer", "Playing: ${fileSchema.absolutePath} duration: $duration")
                     }
                 }
                 setOnCompletionListener {
@@ -80,6 +92,8 @@ class MediaPlayer(private val context: Context) {
             } catch (e: IllegalStateException) {
                 Log.w("MediaPlayer", "Stop called in invalid state")
             } finally {
+                _currentFileName.value = ""
+                _trackDuration.value = 0
                 release()
             }
         }

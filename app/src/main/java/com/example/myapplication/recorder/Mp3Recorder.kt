@@ -27,6 +27,7 @@ class Mp3Recorder(val context: Context, val audioConfig: AudioConfig) : Recorder
     private var audioRecord: AudioRecord? = null
 
     private val minBufferSize = AudioRecord.getMinBufferSize(
+
         audioConfig.sampleRate,
         audioConfig.channelIn,
         audioConfig.encoding

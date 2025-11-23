@@ -131,7 +131,7 @@ fun HomeScreen(
     )
     StopPlayAudioControl(mediaPlayer)
     StatusBar(mediaPlayer, textUtils, statusManager, timerViewModel)
-    MenuButton(navController)
+    MenuButton(navController, mediaPlayer)
 }
 
 @Composable
@@ -487,7 +487,7 @@ fun StatusBar(
 }
 
 @Composable
-fun MenuButton(navController: NavController) {
+fun MenuButton(navController: NavController, mediaPlayer: MediaPlayer) {
     Box(
         modifier = Modifier
             .padding(20.dp)
@@ -496,6 +496,7 @@ fun MenuButton(navController: NavController) {
         Button(
             onClick = {
                 Log.i("Menu button", "Open Menu...")
+                mediaPlayer.stop()
                 navController.navigate(Screen.MENU.route)
             },
             modifier = Modifier

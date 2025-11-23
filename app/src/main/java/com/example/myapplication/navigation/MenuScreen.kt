@@ -164,14 +164,6 @@ fun PlaylistItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { Log.i("Изменить", "Изменить имя плейлиста") },
-                        modifier = Modifier.size(64.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text("✏\uFE0F")
-                    }
-
-                    Button(
                         onClick = {
                             Log.i("Удалить плейлист", "Удалить этот плейлист")
                             showDialog.value = true

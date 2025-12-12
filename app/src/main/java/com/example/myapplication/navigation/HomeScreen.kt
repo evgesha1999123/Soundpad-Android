@@ -8,24 +8,29 @@ import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Stop
@@ -57,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+
 import com.example.myapplication.fileRepo.FilePickerContract
 import com.example.myapplication.fileRepo.FileRepo
 import com.example.myapplication.player.MediaPlayer
@@ -97,7 +103,8 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .size(256.dp)
-            .fillMaxWidth()
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         Text(
             text = "Плейлист: $currentPlaylistName",
@@ -172,10 +179,10 @@ fun PlayButtons(
     }
     Card(
         modifier = Modifier
-            .offset(y = -(50.dp))
+            .offset(y = -(30.dp))
             .wrapContentSize()
             .padding(10.dp)
-            .height(590.dp),
+            .height(500.dp),
         shape = RoundedCornerShape(16.dp),
     ) {
         LazyVerticalGrid(
@@ -239,8 +246,8 @@ fun FileControls(
 
     Box(
         modifier = Modifier
-            .padding(20.dp)
             .size(75.dp)
+            .offset(y=-(20.dp))
     ) {
         Column(
             modifier = Modifier.align(Alignment.BottomStart), // ← Выравниваем столбец в левом нижнем углу
@@ -393,7 +400,7 @@ fun StopPlayAudioControl(audioPlayer: com.example.myapplication.player.MediaPlay
         modifier = Modifier
             .fillMaxSize()
             .padding(vertical = 29.dp)
-            .offset(x = (-39).dp),
+            .offset(x = (-19).dp),
         contentAlignment = Alignment.BottomEnd
     ) {
         Button(
